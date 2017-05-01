@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">IoIo Flight Planner</string>
+    <string name="title_activity_mmenu">MMenuActivity</string>
+
+    <string name="title_section1">Section 1</string>
+    <string name="title_section2">Section 2</string>
+    <string name="title_section3">Section 3</string>
+
+    <string name="navigation_drawer_open">Abrir Menú</string>
+    <string name="navigation_drawer_close">Cerrar Menú</string>
+
+    <string name="action_example">Example action</string>
+
+    <string name="action_settings">Ajustes</string>
+</resources>
