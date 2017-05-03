@@ -19,7 +19,7 @@
         android:id="@+id/navigation_drawer"
         android:name="cl.usach.abarra.flightplanner.NavigationDrawerFragment"
         android:layout_width="@dimen/navigation_drawer_width"
-        android:layout_height="match_parent"
+        android:layout_height="fill_parent"
         android:layout_gravity="start"
         tools:layout="@layout/drawer_mmenu" />
 

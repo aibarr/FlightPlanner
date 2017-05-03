@@ -6,6 +6,7 @@ import android.app.ActionBar;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.content.Context;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -19,7 +20,9 @@ import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
 public class MMenuActivity extends Activity
-        implements NavigationDrawerFragment.NavigationDrawerCallbacks {
+        implements NavigationDrawerFragment.NavigationDrawerCallbacks,
+        MapPlanner.OnFragmentInteractionListener,
+        settingsFragment.OnFragmentInteractionListener {
 
     /**
      * Fragment managing the behaviors, interactions and presentation of the navigation drawer.
@@ -50,9 +53,20 @@ public class MMenuActivity extends Activity
     public void onNavigationDrawerItemSelected(int position) {
         // update the main content by replacing fragments
         FragmentManager fragmentManager = getFragmentManager();
-        fragmentManager.beginTransaction()
-                .replace(R.id.container, PlaceholderFragment.newInstance(position + 1))
-                .commit();
+        System.out.println(position);
+        switch (position){
+            case 0:
+                MapPlanner fragment = new MapPlanner();
+                fragmentManager.beginTransaction().replace(R.id.container, fragment).commit();
+                break;
+            case 1:
+                settingsFragment sfragment = new settingsFragment();
+                fragmentManager.beginTransaction().replace(R.id.container, sfragment).commit();
+                break;
+            default:
+                System.out.println("hacer nada!");
+
+        };
     }
 
     public void onSectionAttached(int number) {
@@ -79,20 +93,20 @@ public class MMenuActivity extends Activity
     /**
      * A placeholder fragment containing a simple view.
      */
-    public static class PlaceholderFragment extends Fragment {
-        /**
+    /*public static class PlaceholderFragment extends Fragment {
+        *//**
          * The fragment argument representing the section number for this
          * fragment.
-         */
+         *//*
         private static final String ARG_SECTION_NUMBER = "section_number";
 
         public PlaceholderFragment() {
         }
 
-        /**
+        *//**
          * Returns a new instance of this fragment for the given section
          * number.
-         */
+         *//*
         public static PlaceholderFragment newInstance(int sectionNumber) {
             PlaceholderFragment fragment = new PlaceholderFragment();
             Bundle args = new Bundle();
@@ -114,6 +128,11 @@ public class MMenuActivity extends Activity
             ((MMenuActivity) activity).onSectionAttached(
                     getArguments().getInt(ARG_SECTION_NUMBER));
         }
+    }*/
+
+    @Override
+    public void onFragmentInteraction (Uri uri){
+
     }
 
 }

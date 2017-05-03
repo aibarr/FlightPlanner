@@ -8,7 +8,7 @@ import java.io.File;
 
 
 //Arreglo de puntos para el plan de vuelo
-class FlightPlan {
+public class FlightPlan {
     private Waypoint home;
     private Waypoint[] route;
 
