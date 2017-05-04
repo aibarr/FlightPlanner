@@ -3,11 +3,12 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context="cl.usach.abarra.flightplanner.settingsFragment">
-
-    <!-- TODO: Update blank fragment layout -->
-    <TextView
+    <ListView
+        android:id="@+id/settings_list"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:text="Al Nico le gusta el Pico" />
+        xmlns:android="http://schemas.android.com/apk/res/android">
 
+    </ListView>
 </FrameLayout>
+

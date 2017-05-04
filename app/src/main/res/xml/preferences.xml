@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory android:title="Generales">
+        <EditTextPreference
+            android:defaultValue="/"
+            android:key="/"
+            android:title="Directorio de Almacenamiento">
+
+        </EditTextPreference>
+        <ListPreference android:title="Unidad de Distancia">
+
+        </ListPreference>
+        <ListPreference android:title="Unidad de Velocidad">
+
+        </ListPreference>
+
+
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Planificación"  >
+
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Polígono" >
+
+    </PreferenceCategory>
+</PreferenceScreen>

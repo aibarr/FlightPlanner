@@ -2,9 +2,9 @@
     <string name="app_name">IoIo Flight Planner</string>
     <string name="title_activity_mmenu">IoIo Flight Planner</string>
 
-    <string name="title_section1">Section 1</string>
-    <string name="title_section2">Section 2</string>
-    <string name="title_section3">Section 3</string>
+    <string name="title_section1">Planificar Vuelo</string>
+    <string name="title_section2">Calibrar</string>
+    <string name="title_section3">Ajustes</string>
 
     <string name="navigation_drawer_open">Abrir Menú</string>
     <string name="navigation_drawer_close">Cerrar Menú</string>

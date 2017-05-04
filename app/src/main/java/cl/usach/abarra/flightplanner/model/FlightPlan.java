@@ -3,7 +3,7 @@ package cl.usach.abarra.flightplanner.model;
 import java.io.File;
 
 /**
- * Created by Usuario on 30/04/2017.
+ * Created by Alfredo Barra on 30/04/2017. Pre-grade project.
  */
 
 

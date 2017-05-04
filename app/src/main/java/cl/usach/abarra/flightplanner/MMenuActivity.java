@@ -60,6 +60,10 @@ public class MMenuActivity extends Activity
                 fragmentManager.beginTransaction().replace(R.id.container, fragment).commit();
                 break;
             case 1:
+                System.out.println("Calibraciones");
+                break;
+            case 2:
+                System.out.println("Configuraciones");
                 settingsFragment sfragment = new settingsFragment();
                 fragmentManager.beginTransaction().replace(R.id.container, sfragment).commit();
                 break;
