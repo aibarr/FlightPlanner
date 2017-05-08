@@ -3,7 +3,7 @@
     package="cl.usach.abarra.flightplanner">
 
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    
+
 
     <application
         android:allowBackup="true"
