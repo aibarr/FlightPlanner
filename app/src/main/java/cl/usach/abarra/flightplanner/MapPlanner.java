@@ -7,30 +7,48 @@ import android.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.GoogleMap.OnCameraIdleListener;
+import com.google.android.gms.maps.GoogleMap.OnMapClickListener;
+import com.google.android.gms.maps.GoogleMap.OnMapLongClickListener;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polygon;
+import com.google.android.gms.maps.model.PolygonOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class MapPlanner extends Fragment {
 
     MapView mapPlannerView;
-    private GoogleMap   googleMap;
-    
+    private GoogleMap googleMap;
+    private OnMapReadyCallback mapReady;
+    private Polyline ruta;
+    private PolylineOptions optRuta;
 
-        private OnFragmentInteractionListener mListener;
+    private Polygon zona;
+    private PolygonOptions optZona;
 
+    private OnFragmentInteractionListener mListener;
+
+    //Elementos del Fragment
+    Button drawPolygon;
+
+    //Constructor
     public MapPlanner() {
         // Required empty public constructor
     }
-
 
     public static MapPlanner newInstance(String param1, String param2) {
         MapPlanner fragment = new MapPlanner();
@@ -42,18 +60,17 @@ public class MapPlanner extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
         if (getArguments() != null) {
 
         }
-
-        
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_map_planner, container, false);
-
 
         //Instanciamos la vista del mapa
         mapPlannerView = (MapView) rootView.findViewById(R.id.mapPlannerView);
@@ -66,39 +83,70 @@ public class MapPlanner extends Fragment {
             e.printStackTrace();
         }
 
-        mapPlannerView.getMapAsync(new OnMapReadyCallback() {
+
+        mapPlannerView.getMapAsync(mapReady = new OnMapReadyCallback() {
             @Override
             public void onMapReady(GoogleMap mMap) {
+                System.out.println("Mapa Listo!");
                 googleMap = mMap;
+
+                googleMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
+
+                //Ruta
+                optRuta= new PolylineOptions();
+                ruta = googleMap.addPolyline(optRuta);
+
+                //Poligono
+                optZona = new PolygonOptions();
+                //zona = googleMap.addPolygon(optZona);
+
+                final List<LatLng> ptsRuta = new ArrayList<LatLng>();
+
+                googleMap.setOnMapClickListener(new OnMapClickListener() {
+                    @Override
+                    public void onMapClick(LatLng latLng) {
+                        System.out.println("Tocado en "+ latLng.toString());
+                        googleMap.addMarker(new MarkerOptions().position(latLng));
+                        ptsRuta.add(latLng);
+                        ruta.setPoints(ptsRuta);
+                    }
+                });
             }
         });
+
+        drawPolygon = (Button) rootView.findViewById(R.id.drawPolygon);
+
+        drawPolygon.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                zona = null;
+                googleMap.clear();
+
+                googleMap.setOnMapClickListener(new OnMapClickListener() {
+                    final List<LatLng> ptsZona = new ArrayList<LatLng>();
+
+                    @Override
+                    public void onMapClick(LatLng latLng) {
+                        ptsZona.add(latLng);
+                        googleMap.addMarker(new MarkerOptions().position(latLng));
+                        if (ptsZona.size()>2){
+                            if(zona != null){
+                                zona.setPoints(ptsZona);
+
+                            }else {
+                                optZona.addAll(ptsZona);
+                                zona = googleMap.addPolygon(optZona);
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
         // Inflate the layout for this fragment
         return rootView;
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        mapPlannerView.onResume();
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        mapPlannerView.onPause();
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        mapPlannerView.onDestroy();
-    }
-
-    @Override
-    public void onLowMemory() {
-        super.onLowMemory();
-        mapPlannerView.onLowMemory();
-    }
 
     // TODO: Rename method, update argument and hook method into UI event
     public void onButtonPressed(Uri uri) {
@@ -123,6 +171,16 @@ public class MapPlanner extends Fragment {
         super.onDetach();
         mListener = null;
     }
+
+
+
+    //Metodos Mapa
+
+
+
+
+
+
 
     /**
      * This interface must be implemented by activities that contain this
