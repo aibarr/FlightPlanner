@@ -22,7 +22,8 @@ import android.widget.TextView;
 public class MMenuActivity extends Activity
         implements NavigationDrawerFragment.NavigationDrawerCallbacks,
         MapPlanner.OnFragmentInteractionListener,
-        settingsFragment.OnFragmentInteractionListener {
+        settingsFragment.OnFragmentInteractionListener,
+        MapEditorFragment.OnFragmentInteractionListener {
 
     /**
      * Fragment managing the behaviors, interactions and presentation of the navigation drawer.
@@ -67,6 +68,11 @@ public class MMenuActivity extends Activity
                 settingsFragment sfragment = new settingsFragment();
                 fragmentManager.beginTransaction().replace(R.id.container, sfragment).commit();
                 break;
+            case 3:
+                System.out.println("Test");
+                MapEditorFragment mapEditorFragment = new MapEditorFragment();
+                fragmentManager.beginTransaction().replace(R.id.container, mapEditorFragment).commit();
+                break;
             default:
                 System.out.println("hacer nada!");
 
@@ -83,6 +89,9 @@ public class MMenuActivity extends Activity
                 break;
             case 3:
                 mTitle = getString(R.string.title_section3);
+                break;
+            case 4:
+                mTitle = "Test";
                 break;
         }
     }

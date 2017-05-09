@@ -134,6 +134,7 @@ public class MapPlanner extends Fragment {
                                 zona.setPoints(ptsZona);
 
                             }else {
+                                optZona = new PolygonOptions();
                                 optZona.addAll(ptsZona);
                                 zona = googleMap.addPolygon(optZona);
                             }

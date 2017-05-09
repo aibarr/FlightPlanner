@@ -2,8 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="cl.usach.abarra.flightplanner">
 
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <application
         android:allowBackup="true"
@@ -13,22 +12,18 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-
-        <!--metadatos de acceso a API de mapas-->
+        <!-- metadatos de acceso a API de mapas -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyDkSLeNFv1QoT8jTs8AROSxRPXS_9kJng4" />
 
-
-
-        <activity android:name=".MainActivity">
-
-        </activity>
+        <activity android:name=".MainActivity"></activity>
         <activity
             android:name=".MMenuActivity"
             android:label="@string/title_activity_mmenu">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
