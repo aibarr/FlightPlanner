@@ -1,35 +1,29 @@
 package cl.usach.abarra.flightplanner;
 
 import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.app.Fragment;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 
-import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.GoogleMap.OnCameraIdleListener;
-import com.google.android.gms.maps.GoogleMap.OnMapClickListener;
-import com.google.android.gms.maps.GoogleMap.OnMapLongClickListener;
-import com.google.android.gms.maps.model.CameraPosition;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
-import java.util.ArrayList;
-import java.util.List;
 
-
-public class MapPlanner extends Fragment {
+public class MapPlannerFragment extends Fragment {
 
     MapView mapPlannerView;
     private GoogleMap googleMap;
@@ -46,12 +40,12 @@ public class MapPlanner extends Fragment {
     Button drawPolygon;
 
     //Constructor
-    public MapPlanner() {
+    public MapPlannerFragment() {
         // Required empty public constructor
     }
 
-    public static MapPlanner newInstance(String param1, String param2) {
-        MapPlanner fragment = new MapPlanner();
+    public static MapPlannerFragment newInstance(String param1, String param2) {
+        MapPlannerFragment fragment = new MapPlannerFragment();
         Bundle args = new Bundle();
         fragment.setArguments(args);
         return fragment;
@@ -60,11 +54,31 @@ public class MapPlanner extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-
         if (getArguments() != null) {
 
         }
+        setHasOptionsMenu(true);
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        //super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.main_screen_menu, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        System.out.println("Se infló el menú");
+        switch (item.getItemId()){
+            case R.id.start_editor:
+                Intent intent = new Intent(getActivity(), MapEditorActivity.class);
+                startActivity(intent);
+                break;
+            default:
+                break;
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -92,7 +106,7 @@ public class MapPlanner extends Fragment {
 
                 googleMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
 
-                //Ruta
+                /*//Ruta
                 optRuta= new PolylineOptions();
                 ruta = googleMap.addPolyline(optRuta);
 
@@ -110,11 +124,11 @@ public class MapPlanner extends Fragment {
                         ptsRuta.add(latLng);
                         ruta.setPoints(ptsRuta);
                     }
-                });
+                });*/
             }
         });
 
-        drawPolygon = (Button) rootView.findViewById(R.id.drawPolygon);
+        /*drawPolygon = (Button) rootView.findViewById(R.id.drawPolygon);
 
         drawPolygon.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -142,7 +156,7 @@ public class MapPlanner extends Fragment {
                     }
                 });
             }
-        });
+        });*/
 
         // Inflate the layout for this fragment
         return rootView;
@@ -172,15 +186,6 @@ public class MapPlanner extends Fragment {
         super.onDetach();
         mListener = null;
     }
-
-
-
-    //Metodos Mapa
-
-
-
-
-
 
 
     /**

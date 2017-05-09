@@ -2,7 +2,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="cl.usach.abarra.flightplanner.MapPlanner">
+    tools:context="cl.usach.abarra.flightplanner.MapPlannerFragment">
 
    <com.google.android.gms.maps.MapView
        android:id="@+id/mapPlannerView"
@@ -10,10 +10,10 @@
        android:layout_height="match_parent">
    </com.google.android.gms.maps.MapView>
 
-   <Button
+   <!--<Button
        android:id="@+id/drawPolygon"
        android:layout_width="wrap_content"
        android:layout_height="wrap_content"
-       android:text="Poligono" />
+       android:text="Poligono" />-->
 
 </FrameLayout>

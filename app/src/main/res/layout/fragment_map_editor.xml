@@ -14,47 +14,85 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <Button
-            android:id="@+id/create_line"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Line"
-            android:layout_alignParentTop="true"
-            android:layout_alignParentEnd="true" />
+            android:orientation="horizontal">
 
-        <Button
-            android:id="@+id/create_polygon"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Polygon"
-            android:layout_below="@+id/create_line"
-            android:layout_alignParentEnd="true" />
+            <Button
+                android:id="@+id/create_polygon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_below="@+id/create_line"
+                android:layout_weight="0.31"
+                android:text="Polygon" />
 
-        <Button
-            android:id="@+id/undo_button"
-            android:layout_width="wrap_content"
+            <Button
+                android:id="@+id/create_line"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_alignParentTop="true"
+                android:layout_weight="0.67"
+                android:text="Line" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/linearLayout"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_alignParentEnd="true"
-            android:layout_below="@+id/create_polygon"
-            android:text="undo"
-            android:visibility="invisible" />
-        <Button
-            android:id="@+id/clear_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Clear"
-            android:layout_marginBottom="116dp"
             android:layout_alignParentBottom="true"
-            android:layout_alignParentStart="true" />
+            android:background="@color/colorAccent"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/clear_button"
+                android:layout_width="16dp"
+                android:layout_height="wrap_content"
+                android:layout_alignParentBottom="true"
+                android:layout_alignParentStart="true"
+                android:layout_weight="1"
+                android:text="Clear" />
+
+            <TextView
+                android:id="@+id/status_barr"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="TextView" />
+
+            <Button
+                android:id="@+id/undo_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentBottom="true"
+                android:layout_alignParentEnd="true"
+                android:layout_weight="1"
+                android:text="undo"
+                android:visibility="invisible" />
+        </LinearLayout>
 
         <Button
             android:id="@+id/finish_Button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:layout_alignParentEnd="true"
+            android:layout_above="@+id/linearLayout"
+            android:layout_alignParentStart="true"
+            android:layout_weight="1"
             android:text="Finish"
-            android:visibility="gone" />
+            android:visibility="invisible" />
+
+        <Button
+            android:id="@+id/set_home"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_above="@+id/linearLayout"
+            android:layout_alignParentEnd="true"
+            android:layout_weight="0.31"
+            android:text="Home" />
+
     </RelativeLayout>
 
 </FrameLayout>

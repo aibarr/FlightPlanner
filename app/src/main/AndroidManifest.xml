@@ -17,7 +17,7 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyDkSLeNFv1QoT8jTs8AROSxRPXS_9kJng4" />
 
-        <activity android:name=".MainActivity"></activity>
+        <activity android:name=".MainActivity" />
         <activity
             android:name=".MMenuActivity"
             android:label="@string/title_activity_mmenu">
@@ -27,6 +27,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".MapEditorActivity"></activity>
     </application>
 
 </manifest>

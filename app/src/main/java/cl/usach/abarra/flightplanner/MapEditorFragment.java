@@ -11,16 +11,23 @@ import android.os.Bundle;
 import android.app.Activity;
 import android.app.Fragment;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.widget.TextViewCompat;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.TextView;
 
 
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
@@ -36,6 +43,8 @@ public class MapEditorFragment extends Fragment {
 
     private OnFragmentInteractionListener mListener;
 
+    int buttonFlag = 0;
+
     MapView mapEditorView;
     private GoogleMap map;
     private Polyline route;
@@ -43,6 +52,13 @@ public class MapEditorFragment extends Fragment {
 
     private List<Polygon> polygonList;
     List<LatLng> ptsRoute;
+
+    public static final CameraPosition MAIPU =
+            new CameraPosition.Builder().target(new LatLng(-33.509838, -70.756432))
+                    .zoom(15.5f)
+                    .bearing(0)
+                    .tilt(25)
+                    .build();
 
     private PolygonOptions polygonOptions;
 
@@ -53,6 +69,8 @@ public class MapEditorFragment extends Fragment {
     Button createLine;
     Button createPolygon;
     Button undo;
+
+    TextView statusBar;
 
     public MapEditorFragment() {
         // Required empty public constructor
@@ -69,22 +87,33 @@ public class MapEditorFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-
         polygonOptions = new PolygonOptions().fillColor(0x4d84ce85);
-
         polygonList = new ArrayList<Polygon>();
-
         if (getArguments() != null) {
 
         }
+        setHasOptionsMenu(true);
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        inflater.inflate(R.menu.map_editor_menu, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View rootView = inflater.inflate(R.layout.fragment_map_editor, container, false);
+        final View rootView = inflater.inflate(R.layout.fragment_map_editor, container, false);
 
+        statusBar = (TextView) rootView.findViewById(R.id.status_barr);
+
+        //Obteniendo el mapa
         mapEditorView = (MapView) rootView.findViewById(R.id.map_editor_view);
         mapEditorView.onCreate(savedInstanceState);
         mapEditorView.onResume();
@@ -100,8 +129,9 @@ public class MapEditorFragment extends Fragment {
             public void onMapReady(GoogleMap googleMap) {
                 map = googleMap;
 
-                //Verificamos ubicacion actual
+                map.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
 
+                //Verificamos ubicacion actual
                 if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                     // TODO: Consider calling
                     //    ActivityCompat#requestPermissions
@@ -112,7 +142,7 @@ public class MapEditorFragment extends Fragment {
                     // for ActivityCompat#requestPermissions for more details.
                     return;
                 }
-                map.setMyLocationEnabled(true);
+                //map.setMyLocationEnabled(true);
 
                 locationManager = (LocationManager) getActivity().getSystemService(Context.LOCATION_SERVICE);
                 loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
@@ -123,7 +153,6 @@ public class MapEditorFragment extends Fragment {
                         public void onLocationChanged(Location location) {
                             loc = location;
                             System.out.println(loc.toString());
-
                         }
 
                         @Override
@@ -144,17 +173,26 @@ public class MapEditorFragment extends Fragment {
                     locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 10000, 500, locationListener);
                     locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 10000, 500, locationListener);
                 } else {
-                    System.out.println(loc.toString());
                 }
-
-
+                //Acerquemos un poco la cámara
+                map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(-33.509838, -70.756432), 10));
             }
         });
 
+        //Flag para Linea "1"
         createLine = (Button) rootView.findViewById(R.id.create_line);
         createLine.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                switch (buttonFlag){
+                    case 2:
+                        rootView.findViewById(R.id.finish_Button).performClick();
+                        break;
+                    default:
+                        break;
+                }
+
+                statusBar.setText("Creando Ruta");
                 optRoute = new PolylineOptions();
 
                 if (route==null){
@@ -175,13 +213,25 @@ public class MapEditorFragment extends Fragment {
             }
         });
 
+        //Flag para Poligono "2"
         final Button finishButton = (Button) rootView.findViewById(R.id.finish_Button);
-
         createPolygon = (Button) rootView.findViewById(R.id.create_polygon);
         createPolygon.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                //Seteamos Flag para avisar que estoy creando un polígono
+                buttonFlag = 2;
+
+                statusBar.setText("Creando Poligono");
+
+                //Lista de vertices para el polígono
                 final List<LatLng> vertices = new ArrayList<LatLng>();
+
+                if  (ptsRoute==null && route==null){
+                    ptsRoute = new ArrayList<LatLng>();
+                    route = map.addPolyline(optRoute = new PolylineOptions());
+                    System.out.println("haciendo lista");
+                }
 
                 map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
                     Polygon tempPolygon;
@@ -206,9 +256,19 @@ public class MapEditorFragment extends Fragment {
                 finishButton.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
+                        buttonFlag  =    0;
 
-                        ptsRoute.addAll(vertices);
-                        route.setPoints(ptsRoute);
+                        switch (vertices.size()){
+                            case 0:
+                                break;
+                            case 1:
+                                ptsRoute.addAll(vertices);
+                                break;
+                            default:
+                                ptsRoute.addAll(vertices);
+                                route.setPoints(ptsRoute);
+
+                        }
                         map.setOnMapClickListener(null);
                         finishButton.setVisibility(View.GONE);
                     }
@@ -224,6 +284,8 @@ public class MapEditorFragment extends Fragment {
         clear.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                route = null;
+                ptsRoute = null;
                 map.setOnMapClickListener(null);
                 map.clear();
             }
