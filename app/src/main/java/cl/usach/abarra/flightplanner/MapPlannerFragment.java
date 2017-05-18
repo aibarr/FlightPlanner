@@ -13,14 +13,21 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 
+import com.google.android.gms.maps.CameraUpdate;
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class MapPlannerFragment extends Fragment {
@@ -31,13 +38,22 @@ public class MapPlannerFragment extends Fragment {
     private Polyline ruta;
     private PolylineOptions optRuta;
 
-    private Polygon zona;
-    private PolygonOptions optZona;
+    //Datos a mostrar
+    private List<LatLng> ptsRoute;
+    private List<Polygon> polygonList;
+
+    //Datos para enviar/recibir
+    private List<String> latitudes;
+    private List<String> longitudes;
+
+    //Constantes de Inicio del editor
+    public static final int NEW_PLAN = 0;
+    public static final int EDIT_PLAN = 1;
+    public static final int LOAD_PLAN = 2;
+
+
 
     private OnFragmentInteractionListener mListener;
-
-    //Elementos del Fragment
-    Button drawPolygon;
 
     //Constructor
     public MapPlannerFragment() {
@@ -68,11 +84,27 @@ public class MapPlannerFragment extends Fragment {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        LatLng camPos = googleMap.getCameraPosition().target;
+        float camZoom = googleMap.getCameraPosition().zoom;
         System.out.println("Se infló el menú");
         switch (item.getItemId()){
             case R.id.start_editor:
                 Intent intent = new Intent(getActivity(), MapEditorActivity.class);
-                startActivity(intent);
+                intent.putExtra("camPos", camPos);
+                intent.putExtra("camZoom", camZoom);
+                startActivityForResult(intent, NEW_PLAN);
+                break;
+            case R.id.edit_plan:
+                Intent editIntent = new Intent(getActivity(), MapEditorActivity.class);
+                if (ptsRoute!= null && !(ptsRoute.isEmpty())){
+                    editIntent.putStringArrayListExtra("latitudes", (ArrayList<String>) latitudes);
+                    editIntent.putStringArrayListExtra("longitudes", (ArrayList<String>) longitudes);
+                }
+                startActivityForResult(editIntent, EDIT_PLAN);
+                break;
+            case R.id.load_plan:
+                Intent loadIntent = new Intent(getActivity(), MapEditorActivity.class);
+                startActivityForResult(loadIntent, LOAD_PLAN);
                 break;
             default:
                 break;
@@ -187,6 +219,37 @@ public class MapPlannerFragment extends Fragment {
         mListener = null;
     }
 
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        System.out.println("reqCode "+ requestCode);
+
+
+
+        switch (requestCode){
+            case NEW_PLAN:
+                Bundle bundle = data.getExtras();
+                latitudes = data.getStringArrayListExtra("latitudes");
+                longitudes = data.getStringArrayListExtra("longitudes");
+                System.out.println(latitudes.toString());
+                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom((LatLng) bundle.get("camPos"), bundle.getFloat("camZoom")));
+                optRuta = new PolylineOptions();
+                ptsRoute = new ArrayList<LatLng>();
+                for (int i=0; i < latitudes.size(); i++ ){
+                    LatLng punto = new LatLng(Double.parseDouble(latitudes.get(i)), Double.parseDouble(longitudes.get(i)));
+                    googleMap.addMarker(new MarkerOptions().position(punto));
+                    ptsRoute.add(punto);
+                }
+                ruta = googleMap.addPolyline(optRuta);
+                ruta.setPoints(ptsRoute);
+                break;
+            case EDIT_PLAN:
+                break;
+            case LOAD_PLAN:
+                break;
+        }
+
+    }
 
     /**
      * This interface must be implemented by activities that contain this

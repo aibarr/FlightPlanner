@@ -2,16 +2,15 @@ package cl.usach.abarra.flightplanner;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.net.Uri;
 import android.os.Bundle;
 import android.app.Activity;
 import android.app.Fragment;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.widget.TextViewCompat;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -41,45 +40,58 @@ import java.util.List;
 
 public class MapEditorFragment extends Fragment {
 
-    private OnFragmentInteractionListener mListener;
+    private OnMapEditorFragmentListener mListener;
 
+    //Flag para botones, con esto sabemos en que estado se encuentra el editor
+    // 0 : no se está editando plan de vuelo
+    // 1 : se está creando una ruta lineal
+    // 2 : se está creando un polígono
     int buttonFlag = 0;
 
+    //Variables globales para el mapa, la ruta de vuelo (route)
     MapView mapEditorView;
     private GoogleMap map;
     private Polyline route;
+    private List<LatLng> ptsRoute;
     private PolylineOptions optRoute;
 
+    //Lista de polígonos creados durante la creación del plan de vuelo
     private List<Polygon> polygonList;
-    List<LatLng> ptsRoute;
 
-    public static final CameraPosition MAIPU =
-            new CameraPosition.Builder().target(new LatLng(-33.509838, -70.756432))
-                    .zoom(15.5f)
-                    .bearing(0)
-                    .tilt(25)
-                    .build();
-
+    //TODO: revisar utilidad de esta variable como global
     private PolygonOptions polygonOptions;
 
-    LocationManager locationManager;
-    LocationListener locationListener;
-    Location loc;
+    //Variables de localización
+    private LocationManager locationManager;
+    private LocationListener locationListener;
+    private Location loc;
 
-    Button createLine;
-    Button createPolygon;
-    Button undo;
+    //Listas para paso entre activities
+    private List<String>    latitudes = new ArrayList<String>();
+    private List<String>    longitudes = new ArrayList<String>();
+    private Bundle bundle;
 
+    LatLng target;
+    float zoom;
+
+    //Botonería del fragment
+    private Button createLine;
+    private Button createPolygon;
+    private Button undo;
+    private Button  homeButton;
+
+    //Textos del fragment
     TextView statusBar;
 
     public MapEditorFragment() {
         // Required empty public constructor
     }
 
-
-    public static MapEditorFragment newInstance(String param1, String param2) {
+    public static MapEditorFragment newInstance(LatLng camPos, float camZoom) {
         MapEditorFragment fragment = new MapEditorFragment();
         Bundle args = new Bundle();
+        args.putParcelable("camPos", camPos);
+        args.putFloat("camZoom", camZoom);
         fragment.setArguments(args);
         return fragment;
     }
@@ -89,9 +101,61 @@ public class MapEditorFragment extends Fragment {
         super.onCreate(savedInstanceState);
         polygonOptions = new PolygonOptions().fillColor(0x4d84ce85);
         polygonList = new ArrayList<Polygon>();
-        if (getArguments() != null) {
 
+        if (getArguments() != null) {
+            bundle = getArguments();
+            System.out.println(bundle.toString());
+            target = (LatLng)bundle.get("camPos");
+            zoom = bundle.getFloat("camZoom");
         }
+
+        //Registrando localizadores
+        //Primero, se verifica si se tiene permiso para la ubicación
+        if (ActivityCompat.checkSelfPermission(getActivity().getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getActivity().getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            System.out.println("No hay mano");
+            return;
+        }
+        locationManager = (LocationManager) getActivity().getSystemService(Context.LOCATION_SERVICE);
+
+        if (locationManager != null) System.out.println(locationManager.toString()); else System.out.println("LocMan Null!");
+
+        loc = locationManager.getLastKnownLocation(locationManager.GPS_PROVIDER);
+
+        if (loc != null) System.out.println(loc.toString()); else System.out.println("Loc Null!");
+
+        locationListener = new LocationListener() {
+            @Override
+            public void onLocationChanged(Location location) {
+
+
+            }
+
+            @Override
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+
+            }
+
+            @Override
+            public void onProviderEnabled(String provider) {
+
+            }
+
+            @Override
+            public void onProviderDisabled(String provider) {
+
+            }
+        };
+
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+
         setHasOptionsMenu(true);
     }
 
@@ -102,6 +166,24 @@ public class MapEditorFragment extends Fragment {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()){
+            case R.id.close_editor:
+                for (LatLng point : ptsRoute){
+                    latitudes.add(String.valueOf(point.latitude));
+                    longitudes.add(String.valueOf(point.longitude));
+                }
+                Intent returnIntent = new Intent();
+                returnIntent.putStringArrayListExtra("latitudes", (ArrayList<String>) latitudes);
+                returnIntent.putStringArrayListExtra("longitudes", (ArrayList<String>) longitudes);
+                returnIntent.putExtra("camPos", map.getCameraPosition().target);
+                returnIntent.putExtra("camZoom", map.getCameraPosition().zoom);
+                getActivity().setResult(Activity.RESULT_OK, returnIntent);
+                getActivity().finish();
+                break;
+            default:
+                break;
+
+        }
 
         return super.onOptionsItemSelected(item);
     }
@@ -128,54 +210,11 @@ public class MapEditorFragment extends Fragment {
             @Override
             public void onMapReady(GoogleMap googleMap) {
                 map = googleMap;
-
                 map.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
-
-                //Verificamos ubicacion actual
-                if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    // TODO: Consider calling
-                    //    ActivityCompat#requestPermissions
-                    // here to request the missing permissions, and then overriding
-                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                    //                                          int[] grantResults)
-                    // to handle the case where the user grants the permission. See the documentation
-                    // for ActivityCompat#requestPermissions for more details.
-                    return;
+                if (map != null){
+                    map.moveCamera(CameraUpdateFactory.newLatLngZoom((LatLng) bundle.get("camPos"), bundle.getFloat("camZoom")));
                 }
-                //map.setMyLocationEnabled(true);
 
-                locationManager = (LocationManager) getActivity().getSystemService(Context.LOCATION_SERVICE);
-                loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-
-                if (loc==null){
-                    locationListener = new LocationListener() {
-                        @Override
-                        public void onLocationChanged(Location location) {
-                            loc = location;
-                            System.out.println(loc.toString());
-                        }
-
-                        @Override
-                        public void onStatusChanged(String provider, int status, Bundle extras) {
-
-                        }
-
-                        @Override
-                        public void onProviderEnabled(String provider) {
-
-                        }
-
-                        @Override
-                        public void onProviderDisabled(String provider) {
-
-                        }
-                    };
-                    locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 10000, 500, locationListener);
-                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 10000, 500, locationListener);
-                } else {
-                }
-                //Acerquemos un poco la cámara
-                map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(-33.509838, -70.756432), 10));
             }
         });
 
@@ -281,6 +320,14 @@ public class MapEditorFragment extends Fragment {
 
         undo = (Button) rootView.findViewById(R.id.undo_button);
 
+        homeButton = (Button) rootView.findViewById(R.id.set_home);
+        homeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                map.addMarker(new MarkerOptions().position(new LatLng(loc.getLatitude(), loc.getLatitude())));
+            }
+        });
+
         clear.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -291,27 +338,29 @@ public class MapEditorFragment extends Fragment {
             }
         });
 
+
         // Inflate the layout for this fragment
         return rootView;
     }
 
-    // TODO: Rename method, update argument and hook method into UI event
+    /*// TODO: Rename method, update argument and hook method into UI event
     public void onButtonPressed(Uri uri) {
         if (mListener != null) {
-            mListener.onFragmentInteraction(uri);
+            mListener.onMapEditorFragmentInteraction(uri);
         }
-    }
+    }*/
 
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        if (context instanceof OnFragmentInteractionListener) {
-            mListener = (OnFragmentInteractionListener) context;
+        if (context instanceof OnMapEditorFragmentListener) {
+            mListener = (OnMapEditorFragmentListener) context;
         } else {
             throw new RuntimeException(context.toString()
                     + " must implement OnFragmentInteractionListener");
         }
     }
+
 
     @Override
     public void onDetach() {
@@ -329,9 +378,11 @@ public class MapEditorFragment extends Fragment {
      * "http://developer.android.com/training/basics/fragments/communicating.html"
      * >Communicating with Other Fragments</a> for more information.
      */
-    public interface OnFragmentInteractionListener {
-        // TODO: Update argument type and name
-        void onFragmentInteraction(Uri uri);
+    public interface OnMapEditorFragmentListener {
+
+        void onMapEditorFragmentInteraction(List<LatLng> route, List<Polygon> polygonList);
+
+        void onMapEditorFragmentCanceled(LatLng camPos, float camZoom);
     }
 
 

@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
+<menu xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
         android:id="@+id/start_editor"
-        android:title="Iniciar editor"/>
+        android:title="Nuevo Plan" />
+    <item
+        android:id="@+id/edit_plan"
+        android:title="Editar Plan" />
+    <item
+        android:id="@+id/load_plan"
+        android:title="Cargar Plan" />
 
 </menu>

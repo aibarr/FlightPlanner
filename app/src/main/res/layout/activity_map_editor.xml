@@ -5,12 +5,12 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent">
 
-    <fragment
-        android:id="@+id/map_editor_fragment"
-        android:name="cl.usach.abarra.flightplanner.MapEditorFragment"
+    <FrameLayout
+        android:id="@+id/editor_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:layout="@layout/fragment_map_editor" />
+        android:layout_height="match_parent">
+
+    </FrameLayout>
 
 
 

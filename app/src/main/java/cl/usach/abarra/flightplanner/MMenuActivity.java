@@ -11,7 +11,7 @@ import android.support.v4.widget.DrawerLayout;
 public class MMenuActivity extends Activity
         implements NavigationDrawerFragment.NavigationDrawerCallbacks,
         MapPlannerFragment.OnFragmentInteractionListener,
-        settingsFragment.OnFragmentInteractionListener         {
+        settingsFragment.OnSettingsInteractionListener         {
 
     /**
      * Fragment managing the behaviors, interactions and presentation of the navigation drawer.
@@ -78,9 +78,9 @@ public class MMenuActivity extends Activity
             case 3:
                 mTitle = getString(R.string.title_section3);
                 break;
-            case 4:
+            /*case 4:
                 mTitle = "Test";
-                break;
+                break;*/
         }
     }
 
@@ -137,4 +137,8 @@ public class MMenuActivity extends Activity
 
     }
 
+    @Override
+    public void onSettingsInteraction(Uri uri) {
+
+    }
 }
