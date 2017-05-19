@@ -1,14 +1,17 @@
 package cl.usach.abarra.flightplanner;
 
 import android.Manifest;
+import android.annotation.TargetApi;
+import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
-import android.content.Intent;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
-import android.app.Activity;
 import android.app.Fragment;
 import android.support.v4.app.ActivityCompat;
 import android.view.LayoutInflater;
@@ -67,8 +70,6 @@ public class MapEditorFragment extends Fragment {
     private Location loc;
 
     //Listas para paso entre activities
-    private List<String>    latitudes = new ArrayList<String>();
-    private List<String>    longitudes = new ArrayList<String>();
     private Bundle bundle;
 
     LatLng target;
@@ -168,17 +169,7 @@ public class MapEditorFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()){
             case R.id.close_editor:
-                for (LatLng point : ptsRoute){
-                    latitudes.add(String.valueOf(point.latitude));
-                    longitudes.add(String.valueOf(point.longitude));
-                }
-                Intent returnIntent = new Intent();
-                returnIntent.putStringArrayListExtra("latitudes", (ArrayList<String>) latitudes);
-                returnIntent.putStringArrayListExtra("longitudes", (ArrayList<String>) longitudes);
-                returnIntent.putExtra("camPos", map.getCameraPosition().target);
-                returnIntent.putExtra("camZoom", map.getCameraPosition().zoom);
-                getActivity().setResult(Activity.RESULT_OK, returnIntent);
-                getActivity().finish();
+                closeEditor();
                 break;
             default:
                 break;
@@ -266,6 +257,8 @@ public class MapEditorFragment extends Fragment {
                 //Lista de vertices para el polígono
                 final List<LatLng> vertices = new ArrayList<LatLng>();
 
+
+
                 if  (ptsRoute==null && route==null){
                     ptsRoute = new ArrayList<LatLng>();
                     route = map.addPolyline(optRoute = new PolylineOptions());
@@ -273,18 +266,27 @@ public class MapEditorFragment extends Fragment {
                 }
 
                 map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
-                    Polygon tempPolygon;
                     PolygonOptions tempPolygonOptions = new PolygonOptions();
+                    Polygon tempPolygon;
 
                     @Override
                     public void onMapClick(LatLng latLng) {
+
                         map.addMarker(new MarkerOptions().position(latLng));
                         vertices.add(latLng);
                         if (vertices.size()>2){
                             if(tempPolygon==null){
                                 tempPolygon = map.addPolygon(tempPolygonOptions.addAll(vertices));
+                                if (!polygonList.isEmpty()){
+                                    polygonList.remove(polygonList.size()-1);
+                                }
+                                polygonList.add(tempPolygon);
                             }else {
                                 tempPolygon.setPoints(vertices);
+                                if (!polygonList.isEmpty()){
+                                    polygonList.remove(polygonList.size()-1);
+                                }
+                                polygonList.add(tempPolygon);
                             }
 
                         }
@@ -296,20 +298,56 @@ public class MapEditorFragment extends Fragment {
                     @Override
                     public void onClick(View v) {
                         buttonFlag  =    0;
+                        AlertDialog.Builder builder;
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            builder = new AlertDialog.Builder(getActivity(), android.R.style.Theme_Material_Dialog_Alert);
+                        } else {
+                            builder = new AlertDialog.Builder(getActivity());
+                        }
+
+                        builder.setTitle("Terminar Polígono")
+                                .setMessage("Tiene un polígono sin completar. ¿Dejar de dibujar polígono actual?")
+                                .setIcon(android.R.drawable.ic_dialog_alert);
 
                         switch (vertices.size()){
                             case 0:
                                 break;
                             case 1:
-                                ptsRoute.addAll(vertices);
+                                builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener(){
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        ptsRoute.addAll(vertices);
+                                        map.setOnMapClickListener(null);
+                                        finishButton.setVisibility(View.GONE);
+                                    }
+                                })
+                                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        return;
+                                    }
+                                })
+                                .show();
                                 break;
                             default:
-                                ptsRoute.addAll(vertices);
-                                route.setPoints(ptsRoute);
-
+                                builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener(){
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        ptsRoute.addAll(vertices);
+                                        route.setPoints(ptsRoute);
+                                        map.setOnMapClickListener(null);
+                                        finishButton.setVisibility(View.GONE);
+                                    }
+                                })
+                                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        return;
+                                    }
+                                })
+                                .show();
                         }
-                        map.setOnMapClickListener(null);
-                        finishButton.setVisibility(View.GONE);
+
                     }
                 });
 
@@ -350,22 +388,74 @@ public class MapEditorFragment extends Fragment {
         }
     }*/
 
+    @TargetApi(23)
     @Override
     public void onAttach(Context context) {
+        System.out.println("Atachando");
         super.onAttach(context);
         if (context instanceof OnMapEditorFragmentListener) {
             mListener = (OnMapEditorFragmentListener) context;
+            System.out.println(mListener.toString());
         } else {
             throw new RuntimeException(context.toString()
                     + " must implement OnFragmentInteractionListener");
         }
     }
 
+    @SuppressWarnings("deprecation")
+    @Override
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
+        if (activity instanceof OnMapEditorFragmentListener) {
+            mListener = (OnMapEditorFragmentListener) activity;
+            System.out.println(mListener.toString());
+        } else {
+            throw new RuntimeException(activity.toString()
+                    + " must implement OnFragmentInteractionListener");
+        }
+    }
 
     @Override
     public void onDetach() {
         super.onDetach();
         mListener = null;
+    }
+
+    //Funcion para cerrar editor y terminar mapa
+    public void closeEditor(){
+        if (ptsRoute.isEmpty() || ptsRoute==null){
+            mListener.onMapEditorFragmentCanceled(map.getCameraPosition().target, map.getCameraPosition().zoom);
+        }else{
+            AlertDialog.Builder builder;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                builder = new AlertDialog.Builder(getActivity(), android.R.style.Theme_Material_Dialog_Alert);
+            } else {
+                builder = new AlertDialog.Builder(getActivity());
+            }
+            builder.setTitle("Cerrar Editor")
+                    .setMessage("Está cerrando el editor, ¿Qué desea hacer?")
+                    .setPositiveButton("Guardar y cerrar", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            mListener.onMapEditorFragmentFinishResult(ptsRoute, polygonList, map.getCameraPosition().target, map.getCameraPosition().zoom);
+                        }
+                    })
+                    .setNegativeButton("Cerrar sin guardar", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            mListener.onMapEditorFragmentCanceled(map.getCameraPosition().target, map.getCameraPosition().zoom);
+                        }
+                    })
+                    .setNeutralButton("Cancelar", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            return;
+                        }
+                    })
+            .show();
+
+        }
+
     }
 
     /**
@@ -383,6 +473,8 @@ public class MapEditorFragment extends Fragment {
         void onMapEditorFragmentInteraction(List<LatLng> route, List<Polygon> polygonList);
 
         void onMapEditorFragmentCanceled(LatLng camPos, float camZoom);
+
+        void onMapEditorFragmentFinishResult(List<LatLng> route, List<Polygon> polygonList, LatLng camPos, Float camZoom);
     }
 
 
