@@ -1,5 +1,6 @@
 package cl.usach.abarra.flightplanner;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -43,8 +44,8 @@ public class MapPlannerFragment extends Fragment {
     private List<Polygon> polygonList;
 
     //Datos para enviar/recibir
-    private List<String> latitudes;
-    private List<String> longitudes;
+    private ArrayList<Double> latitudes;
+    private ArrayList<Double> longitudes;
 
     //Constantes de Inicio del editor
     public static final int NEW_PLAN = 0;
@@ -70,11 +71,17 @@ public class MapPlannerFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (savedInstanceState != null){
+
+
+        }
+
         if (getArguments() != null) {
 
         }
         setHasOptionsMenu(true);
     }
+
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
@@ -97,8 +104,8 @@ public class MapPlannerFragment extends Fragment {
             case R.id.edit_plan:
                 Intent editIntent = new Intent(getActivity(), MapEditorActivity.class);
                 if (ptsRoute!= null && !(ptsRoute.isEmpty())){
-                    editIntent.putStringArrayListExtra("latitudes", (ArrayList<String>) latitudes);
-                    editIntent.putStringArrayListExtra("longitudes", (ArrayList<String>) longitudes);
+                    editIntent.putExtra("latitudes", latitudes);
+                    editIntent.putExtra("longitudes", longitudes);
                 }
                 startActivityForResult(editIntent, EDIT_PLAN);
                 break;
@@ -136,27 +143,7 @@ public class MapPlannerFragment extends Fragment {
                 System.out.println("Mapa Listo!");
                 googleMap = mMap;
 
-                googleMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
-
-                /*//Ruta
-                optRuta= new PolylineOptions();
-                ruta = googleMap.addPolyline(optRuta);
-
-                //Poligono
-                optZona = new PolygonOptions();
-                //zona = googleMap.addPolygon(optZona);
-
-                final List<LatLng> ptsRuta = new ArrayList<LatLng>();
-
-                googleMap.setOnMapClickListener(new OnMapClickListener() {
-                    @Override
-                    public void onMapClick(LatLng latLng) {
-                        System.out.println("Tocado en "+ latLng.toString());
-                        googleMap.addMarker(new MarkerOptions().position(latLng));
-                        ptsRuta.add(latLng);
-                        ruta.setPoints(ptsRuta);
-                    }
-                });*/
+                googleMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
             }
         });
 
@@ -214,6 +201,27 @@ public class MapPlannerFragment extends Fragment {
     }
 
     @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if(googleMap != null){
+            outState.putParcelable("camPos", googleMap.getCameraPosition().target);
+            outState.putDouble("camZoom", googleMap.getCameraPosition().zoom);
+        }
+
+        if (ptsRoute != null){
+            latitudes = new ArrayList<Double>();
+            longitudes = new ArrayList<Double>();
+            for (LatLng point : ptsRoute){
+                latitudes.add(point.latitude);
+                longitudes.add(point.longitude);
+            }
+            outState.putSerializable("latitudes", latitudes);
+            outState.putSerializable("longitudes", longitudes);
+        }
+        mapPlannerView.onSaveInstanceState(outState);
+    }
+
+    @Override
     public void onDetach() {
         super.onDetach();
         mListener = null;
@@ -224,30 +232,33 @@ public class MapPlannerFragment extends Fragment {
         super.onActivityResult(requestCode, resultCode, data);
         System.out.println("reqCode "+ requestCode);
 
-
-
-        switch (requestCode){
-            case NEW_PLAN:
-                Bundle bundle = data.getExtras();
-                latitudes = data.getStringArrayListExtra("latitudes");
-                longitudes = data.getStringArrayListExtra("longitudes");
-                System.out.println(latitudes.toString());
-                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom((LatLng) bundle.get("camPos"), bundle.getFloat("camZoom")));
-                optRuta = new PolylineOptions();
-                ptsRoute = new ArrayList<LatLng>();
-                for (int i=0; i < latitudes.size(); i++ ){
-                    LatLng punto = new LatLng(Double.parseDouble(latitudes.get(i)), Double.parseDouble(longitudes.get(i)));
-                    googleMap.addMarker(new MarkerOptions().position(punto));
-                    ptsRoute.add(punto);
-                }
-                ruta = googleMap.addPolyline(optRuta);
-                ruta.setPoints(ptsRoute);
-                break;
-            case EDIT_PLAN:
-                break;
-            case LOAD_PLAN:
-                break;
+        if (resultCode== Activity.RESULT_OK){
+            switch (requestCode){
+                case NEW_PLAN:
+                    Bundle bundle = data.getExtras();
+                    latitudes = (ArrayList<Double>) data.getSerializableExtra("latitudes");
+                    longitudes = (ArrayList<Double>) data.getSerializableExtra("longitudes");
+                    System.out.println(latitudes.toString());
+                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom((LatLng) bundle.get("camPos"), bundle.getFloat("camZoom")));
+                    optRuta = new PolylineOptions();
+                    ptsRoute = new ArrayList<LatLng>();
+                    for (int i=0; i < latitudes.size(); i++ ){
+                        LatLng punto = new LatLng(latitudes.get(i), longitudes.get(i) );
+                        googleMap.addMarker(new MarkerOptions().position(punto));
+                        ptsRoute.add(punto);
+                    }
+                    ruta = googleMap.addPolyline(optRuta);
+                    ruta.setPoints(ptsRoute);
+                    break;
+                case EDIT_PLAN:
+                    break;
+                case LOAD_PLAN:
+                    break;
+            }
         }
+
+
+
 
     }
 

@@ -1,19 +1,17 @@
 package cl.usach.abarra.flightplanner;
 
-import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.pm.PackageManager;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.app.Fragment;
+import android.os.Environment;
+import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -29,15 +27,21 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 
@@ -52,10 +56,12 @@ public class MapEditorFragment extends Fragment {
     int buttonFlag = 0;
 
     //Variables globales para el mapa, la ruta de vuelo (route)
-    MapView mapEditorView;
+    private MapView mapEditorView;
     private GoogleMap map;
     private Polyline route;
     private List<LatLng> ptsRoute;
+    private List<Marker> markers;
+    private int ptsCount;
     private PolylineOptions optRoute;
 
     //Lista de polígonos creados durante la creación del plan de vuelo
@@ -64,16 +70,17 @@ public class MapEditorFragment extends Fragment {
     //TODO: revisar utilidad de esta variable como global
     private PolygonOptions polygonOptions;
 
-    //Variables de localización
-    private LocationManager locationManager;
-    private LocationListener locationListener;
-    private Location loc;
-
     //Listas para paso entre activities
     private Bundle bundle;
+    private Bundle saved;
 
-    LatLng target;
-    float zoom;
+    //Para guardado de instancias
+    private LatLng target;
+    private float zoom;
+
+    private ArrayList<Double> latitudes;
+    private ArrayList<Double> longitudes;
+
 
     //Botonería del fragment
     private Button createLine;
@@ -91,8 +98,8 @@ public class MapEditorFragment extends Fragment {
     public static MapEditorFragment newInstance(LatLng camPos, float camZoom) {
         MapEditorFragment fragment = new MapEditorFragment();
         Bundle args = new Bundle();
-        args.putParcelable("camPos", camPos);
-        args.putFloat("camZoom", camZoom);
+        args.putParcelable("target", camPos);
+        args.putFloat("zoom", camZoom);
         fragment.setArguments(args);
         return fragment;
     }
@@ -100,62 +107,33 @@ public class MapEditorFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        polygonOptions = new PolygonOptions().fillColor(0x4d84ce85);
-        polygonList = new ArrayList<Polygon>();
-
+        latitudes = new ArrayList<Double>();
+        longitudes = new ArrayList<Double>();
+        ptsRoute= new ArrayList<LatLng>();
+        markers = new ArrayList<Marker>();
         if (getArguments() != null) {
             bundle = getArguments();
-            System.out.println(bundle.toString());
-            target = (LatLng)bundle.get("camPos");
-            zoom = bundle.getFloat("camZoom");
+            target = (LatLng)bundle.get("target");
+            zoom = bundle.getFloat("zoom");
         }
+        if (savedInstanceState != null){
+            saved = savedInstanceState;
+            System.out.println("Bundle rec: "+saved.toString());
+            target = (LatLng) saved.getParcelable("target");
+            System.out.println("Target rec: "+target.toString());
+            zoom = savedInstanceState.getFloat("zoom");
+            latitudes = (ArrayList<Double>) saved.getSerializable("latitudes");
+            longitudes = (ArrayList<Double>) saved.getSerializable("longitudes");
+            System.out.println("Lat Rec "+latitudes.toString());
+            for(int i = 0; i < longitudes.size(); i++){
+                ptsRoute.add(new LatLng( latitudes.get(i), longitudes.get(i)));
+            }
 
-        //Registrando localizadores
-        //Primero, se verifica si se tiene permiso para la ubicación
-        if (ActivityCompat.checkSelfPermission(getActivity().getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getActivity().getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            System.out.println("No hay mano");
-            return;
+            System.out.println("pts rec: "+ptsRoute.toString());
+
         }
-        locationManager = (LocationManager) getActivity().getSystemService(Context.LOCATION_SERVICE);
-
-        if (locationManager != null) System.out.println(locationManager.toString()); else System.out.println("LocMan Null!");
-
-        loc = locationManager.getLastKnownLocation(locationManager.GPS_PROVIDER);
-
-        if (loc != null) System.out.println(loc.toString()); else System.out.println("Loc Null!");
-
-        locationListener = new LocationListener() {
-            @Override
-            public void onLocationChanged(Location location) {
-
-
-            }
-
-            @Override
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-
-            }
-
-            @Override
-            public void onProviderEnabled(String provider) {
-
-            }
-
-            @Override
-            public void onProviderDisabled(String provider) {
-
-            }
-        };
-
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+        polygonOptions = new PolygonOptions();
+        polygonList = new ArrayList<Polygon>();
 
         setHasOptionsMenu(true);
     }
@@ -168,6 +146,25 @@ public class MapEditorFragment extends Fragment {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()){
+            case R.id.save_plan:
+                if (!ptsRoute.isEmpty() || ptsRoute!=null){
+                    for (LatLng point : ptsRoute){
+                        System.out.println(point.toString());
+                    }
+                }
+                if (!polygonList.isEmpty()||polygonList!=null){
+                    for (Polygon polygon : polygonList){
+                        System.out.println(polygon.getPoints().toString());;
+                    }
+                }
+                try {
+                    savePlan();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                break;
+            case R.id.load_plan:
+                break;
             case R.id.close_editor:
                 closeEditor();
                 break;
@@ -180,8 +177,7 @@ public class MapEditorFragment extends Fragment {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, final Bundle savedInstanceState) {
         final View rootView = inflater.inflate(R.layout.fragment_map_editor, container, false);
 
         statusBar = (TextView) rootView.findViewById(R.id.status_barr);
@@ -197,15 +193,25 @@ public class MapEditorFragment extends Fragment {
             e.printStackTrace();
         }
 
+        if (savedInstanceState != null){
+
+        }
+
+        optRoute = new PolylineOptions();
+
         mapEditorView.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(GoogleMap googleMap) {
                 map = googleMap;
-                map.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
-                if (map != null){
-                    map.moveCamera(CameraUpdateFactory.newLatLngZoom((LatLng) bundle.get("camPos"), bundle.getFloat("camZoom")));
+                map.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+                if (target != null){
+                    System.out.println("Target play: "+target);
+                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(target, zoom));
+                    System.out.println("Target actual "+map.getCameraPosition().toString());
                 }
-
+                System.out.println("Pts Play: "+ptsRoute.toString());
+                route = map.addPolyline(optRoute);
+                route.setPoints(ptsRoute);
             }
         });
 
@@ -216,7 +222,9 @@ public class MapEditorFragment extends Fragment {
             public void onClick(View v) {
                 switch (buttonFlag){
                     case 2:
+                        //TODO: Esta pasando del click y limpia todo
                         rootView.findViewById(R.id.finish_Button).performClick();
+                        System.out.println("Ya hice clic");
                         break;
                     default:
                         break;
@@ -225,21 +233,22 @@ public class MapEditorFragment extends Fragment {
                 statusBar.setText("Creando Ruta");
                 optRoute = new PolylineOptions();
 
-                if (route==null){
-                    route = map.addPolyline(optRoute);
-                    ptsRoute = new ArrayList<LatLng>();
-                }else {
-                    ptsRoute = new ArrayList<LatLng>(route.getPoints());
-                }
-
                 map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
                     @Override
                     public void onMapClick(LatLng latLng) {
-                        map.addMarker(new MarkerOptions().position(latLng));
+                        Marker marker = map.addMarker(new MarkerOptions().position(latLng));
                         ptsRoute.add(latLng);
+                        markers.add(marker);
                         route.setPoints(ptsRoute);
+                        ptsCount++;
+                        if (undo.getVisibility()==Button.INVISIBLE) {
+                            undo.setVisibility(Button.VISIBLE);
+                            setUndoButton();
+                        }
                     }
                 });
+
+
             }
         });
 
@@ -257,13 +266,10 @@ public class MapEditorFragment extends Fragment {
                 //Lista de vertices para el polígono
                 final List<LatLng> vertices = new ArrayList<LatLng>();
 
-
-
-                if  (ptsRoute==null && route==null){
-                    ptsRoute = new ArrayList<LatLng>();
+                if  (route==null){
                     route = map.addPolyline(optRoute = new PolylineOptions());
-                    System.out.println("haciendo lista");
                 }
+
 
                 map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
                     PolygonOptions tempPolygonOptions = new PolygonOptions();
@@ -272,7 +278,8 @@ public class MapEditorFragment extends Fragment {
                     @Override
                     public void onMapClick(LatLng latLng) {
 
-                        map.addMarker(new MarkerOptions().position(latLng));
+                        Marker marker = map.addMarker(new MarkerOptions().position(latLng));
+                        markers.add(marker);
                         vertices.add(latLng);
                         if (vertices.size()>2){
                             if(tempPolygon==null){
@@ -290,14 +297,15 @@ public class MapEditorFragment extends Fragment {
                             }
 
                         }
+
                     }
                 });
-                finishButton.setVisibility(View.VISIBLE);
 
+                finishButton.setVisibility(Button.VISIBLE);
                 finishButton.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        buttonFlag  =    0;
+
                         AlertDialog.Builder builder;
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                             builder = new AlertDialog.Builder(getActivity(), android.R.style.Theme_Material_Dialog_Alert);
@@ -316,6 +324,7 @@ public class MapEditorFragment extends Fragment {
                                 builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener(){
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
+                                        buttonFlag  =  0;
                                         ptsRoute.addAll(vertices);
                                         map.setOnMapClickListener(null);
                                         finishButton.setVisibility(View.GONE);
@@ -333,6 +342,7 @@ public class MapEditorFragment extends Fragment {
                                 builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener(){
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
+                                        buttonFlag  =  0;
                                         ptsRoute.addAll(vertices);
                                         route.setPoints(ptsRoute);
                                         map.setOnMapClickListener(null);
@@ -347,10 +357,8 @@ public class MapEditorFragment extends Fragment {
                                 })
                                 .show();
                         }
-
                     }
                 });
-
             }
         });
 
@@ -362,17 +370,19 @@ public class MapEditorFragment extends Fragment {
         homeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                map.addMarker(new MarkerOptions().position(new LatLng(loc.getLatitude(), loc.getLatitude())));
+
             }
         });
 
         clear.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                route = null;
-                ptsRoute = null;
                 map.setOnMapClickListener(null);
                 map.clear();
+                route = map.addPolyline(optRoute);
+                ptsRoute.clear();
+                ptsCount = 0;
+                markers.clear();
             }
         });
 
@@ -380,6 +390,17 @@ public class MapEditorFragment extends Fragment {
         // Inflate the layout for this fragment
         return rootView;
     }
+
+    @Override
+    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+    }
+
+    @Override
+    public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+    }
+
 
     /*// TODO: Rename method, update argument and hook method into UI event
     public void onButtonPressed(Uri uri) {
@@ -391,11 +412,9 @@ public class MapEditorFragment extends Fragment {
     @TargetApi(23)
     @Override
     public void onAttach(Context context) {
-        System.out.println("Atachando");
         super.onAttach(context);
         if (context instanceof OnMapEditorFragmentListener) {
             mListener = (OnMapEditorFragmentListener) context;
-            System.out.println(mListener.toString());
         } else {
             throw new RuntimeException(context.toString()
                     + " must implement OnFragmentInteractionListener");
@@ -408,7 +427,6 @@ public class MapEditorFragment extends Fragment {
         super.onAttach(activity);
         if (activity instanceof OnMapEditorFragmentListener) {
             mListener = (OnMapEditorFragmentListener) activity;
-            System.out.println(mListener.toString());
         } else {
             throw new RuntimeException(activity.toString()
                     + " must implement OnFragmentInteractionListener");
@@ -416,9 +434,59 @@ public class MapEditorFragment extends Fragment {
     }
 
     @Override
+    public void onSaveInstanceState(Bundle outState) {
+
+        if (ptsRoute!= null){
+            for (LatLng point: ptsRoute){
+                latitudes.add(point.latitude);
+                longitudes.add(point.longitude);
+            }
+        }
+
+        System.out.println("Guardando");
+        target = map.getCameraPosition().target;
+        System.out.println("Target "+ target.toString());
+        zoom = map.getCameraPosition().zoom;
+        System.out.println("Zoom"+zoom);
+        outState.putParcelable("target", target);
+        outState.putFloat("zoom", zoom);
+        outState.putSerializable("latitudes", latitudes);
+        outState.putSerializable("longitudes", longitudes);
+        System.out.println(outState.toString());
+        mapEditorView.onSaveInstanceState(outState);
+        super.onSaveInstanceState(outState);
+    }
+
+
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        mapEditorView.onResume();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        mapEditorView.onPause();
+    }
+
+    @Override
     public void onDetach() {
         super.onDetach();
         mListener = null;
+    }
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        mapEditorView.onLowMemory();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mapEditorView.onDestroy();
     }
 
     //Funcion para cerrar editor y terminar mapa
@@ -458,16 +526,49 @@ public class MapEditorFragment extends Fragment {
 
     }
 
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
+    private void setUndoButton(){
+        //undo.setVisibility(Button.VISIBLE);
+        undo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                int index = markers.size()-1;
+                markers.get(index).remove();
+                markers.remove(index);
+                ptsRoute.remove(index);
+                route.setPoints(ptsRoute);
+                ptsCount--;
+                if (ptsCount<=0) undo.setVisibility(Button.INVISIBLE);
+            }
+        });
+    }
+
+    //Funcion para guardar planes
+    private void savePlan() throws IOException {
+        Long tsLong = System.currentTimeMillis()/1000;
+        String root = Environment.getExternalStorageDirectory().getPath();
+        System.out.println(root);
+        File fpDir = new File(root + "/FligtPlanner");
+        if (!fpDir.exists()){
+            fpDir.mkdirs();
+        }
+        File saveFile = new File("plan_"+ tsLong.toString()+".fplan");
+        if (!saveFile.exists()){
+            saveFile.createNewFile();
+        }
+        FileOutputStream outputStream = new FileOutputStream(saveFile);
+        OutputStreamWriter outputStreamWriter = new OutputStreamWriter(outputStream);
+        try{
+            for (LatLng point : ptsRoute){
+                outputStreamWriter.append(point.toString()+"\n");
+            }
+        }catch (IOException e){
+
+        }
+    }
+
+
+
+
     public interface OnMapEditorFragmentListener {
 
         void onMapEditorFragmentInteraction(List<LatLng> route, List<Polygon> polygonList);

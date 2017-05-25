@@ -1,7 +1,11 @@
 package cl.usach.abarra.flightplanner;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 
 import com.google.android.gms.maps.model.LatLng;
@@ -27,6 +31,35 @@ public class MapEditorActivity extends Activity implements MapEditorFragment.OnM
     }
 
     @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        AlertDialog.Builder builder;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            builder = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert);
+        } else {
+            builder = new AlertDialog.Builder(this);
+        }
+
+        builder.setTitle("Cerrando Editor")
+                .setMessage("Está cerrando el editor, se perderán todos sus progresos. ¿Está seguro que desea continuar?")
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        setResult(Activity.RESULT_CANCELED, null);
+                        finish();
+                    }
+                })
+                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        return;
+                    }
+                })
+                .show();
+
+    }
+
+    @Override
     public void onMapEditorFragmentInteraction(List<LatLng> route, List<Polygon> polygonList) {
 
     }
@@ -40,19 +73,19 @@ public class MapEditorActivity extends Activity implements MapEditorFragment.OnM
     @Override
     public void onMapEditorFragmentFinishResult(List<LatLng> route, List<Polygon> polygonList, LatLng camPos, Float camZoom) {
         System.out.println("Finish recibido");
-        List<String>    latitudes = new ArrayList<String>();
-        List<String>    longitudes = new ArrayList<String>();
+        ArrayList<Double>    latitudes = new ArrayList<Double>();
+        ArrayList<Double>    longitudes = new ArrayList<Double>();
         List<String>    polygons = new ArrayList<String>();
         for (LatLng point : route){
-            latitudes.add(String.valueOf(point.latitude));
-            longitudes.add(String.valueOf(point.longitude));
+            latitudes.add(point.latitude);
+            longitudes.add(point.longitude);
         }
         for (Polygon polygon : polygonList){
             polygons.add(polygon.getPoints().toString());
         }
         Intent returnIntent = new Intent();
-        returnIntent.putStringArrayListExtra("latitudes", (ArrayList<String>) latitudes);
-        returnIntent.putStringArrayListExtra("longitudes", (ArrayList<String>) longitudes);
+        returnIntent.putExtra("latitudes", latitudes);
+        returnIntent.putExtra("longitudes", longitudes);
         returnIntent.putStringArrayListExtra("polygons", (ArrayList<String>) polygons);
         returnIntent.putExtra("camPos", camPos);
         returnIntent.putExtra("camZoom", camZoom);
