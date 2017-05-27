@@ -5,13 +5,16 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.app.Fragment;
 import android.os.Environment;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.util.Log;
+import android.support.v4.content.ContextCompat;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -20,6 +23,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -40,9 +44,14 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.security.Permission;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Stack;
+
+
+import cl.usach.abarra.flightplanner.util.PlanArchiver;
 
 
 public class MapEditorFragment extends Fragment {
@@ -63,6 +72,16 @@ public class MapEditorFragment extends Fragment {
     private List<Marker> markers;
     private int ptsCount;
     private PolylineOptions optRoute;
+    private Float[] heights;
+    private Float[] speeds;
+
+    private Stack   undoStack;
+
+    private static final int POINT = 0;
+    private static final int POLYGON_POINT = 1;
+    private static final int POLYGON = 2;
+
+    private static final int WRITE_REQUEST = 0;
 
     //Lista de polígonos creados durante la creación del plan de vuelo
     private List<Polygon> polygonList;
@@ -80,7 +99,6 @@ public class MapEditorFragment extends Fragment {
 
     private ArrayList<Double> latitudes;
     private ArrayList<Double> longitudes;
-
 
     //Botonería del fragment
     private Button createLine;
@@ -110,6 +128,7 @@ public class MapEditorFragment extends Fragment {
         latitudes = new ArrayList<Double>();
         longitudes = new ArrayList<Double>();
         ptsRoute= new ArrayList<LatLng>();
+        undoStack = new Stack();
         markers = new ArrayList<Marker>();
         if (getArguments() != null) {
             bundle = getArguments();
@@ -147,30 +166,24 @@ public class MapEditorFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()){
             case R.id.save_plan:
-                if (!ptsRoute.isEmpty() || ptsRoute!=null){
-                    for (LatLng point : ptsRoute){
-                        System.out.println(point.toString());
-                    }
-                }
-                if (!polygonList.isEmpty()||polygonList!=null){
-                    for (Polygon polygon : polygonList){
-                        System.out.println(polygon.getPoints().toString());;
-                    }
-                }
-                try {
-                    savePlan();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                int permissionCheck = ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                if (permissionCheck == PackageManager.PERMISSION_GRANTED){
+                    PlanArchiver planArchiver = new PlanArchiver(ptsRoute, heights, speeds, polygonList );
+                    planArchiver.savePlan(Environment.getExternalStorageDirectory().getPath()+"/FlightPlanner/");
+                } else {
+                    ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, WRITE_REQUEST);
                 }
                 break;
             case R.id.load_plan:
+                PlanArchiver planLoader = new PlanArchiver();
+                planLoader.loadPlan();
+                //TODO: Lo demás para cargar el plan
                 break;
             case R.id.close_editor:
                 closeEditor();
                 break;
             default:
                 break;
-
         }
 
         return super.onOptionsItemSelected(item);
@@ -239,6 +252,7 @@ public class MapEditorFragment extends Fragment {
                         Marker marker = map.addMarker(new MarkerOptions().position(latLng));
                         ptsRoute.add(latLng);
                         markers.add(marker);
+                        undoStack.push(POINT);
                         route.setPoints(ptsRoute);
                         ptsCount++;
                         if (undo.getVisibility()==Button.INVISIBLE) {
@@ -280,6 +294,7 @@ public class MapEditorFragment extends Fragment {
 
                         Marker marker = map.addMarker(new MarkerOptions().position(latLng));
                         markers.add(marker);
+                        undoStack.push(POLYGON_POINT);
                         vertices.add(latLng);
                         if (vertices.size()>2){
                             if(tempPolygon==null){
@@ -327,6 +342,7 @@ public class MapEditorFragment extends Fragment {
                                         buttonFlag  =  0;
                                         ptsRoute.addAll(vertices);
                                         map.setOnMapClickListener(null);
+                                        statusBar.setText("");
                                         finishButton.setVisibility(View.GONE);
                                     }
                                 })
@@ -346,6 +362,7 @@ public class MapEditorFragment extends Fragment {
                                         ptsRoute.addAll(vertices);
                                         route.setPoints(ptsRoute);
                                         map.setOnMapClickListener(null);
+                                        statusBar.setText("");
                                         finishButton.setVisibility(View.GONE);
                                     }
                                 })
@@ -521,9 +538,7 @@ public class MapEditorFragment extends Fragment {
                         }
                     })
             .show();
-
         }
-
     }
 
     private void setUndoButton(){
@@ -532,42 +547,35 @@ public class MapEditorFragment extends Fragment {
             @Override
             public void onClick(View v) {
                 int index = markers.size()-1;
-                markers.get(index).remove();
-                markers.remove(index);
-                ptsRoute.remove(index);
-                route.setPoints(ptsRoute);
+                switch ((int)undoStack.peek()){
+                    case POINT:
+                        markers.get(index).remove();
+                        markers.remove(index);
+                        ptsRoute.remove(index);
+                        route.setPoints(ptsRoute);
+                        break;
+                    case POLYGON:
+                        //TODO: agregar algoritmo cuando implemente ruta de polígono
+                        break;
+                }
                 ptsCount--;
                 if (ptsCount<=0) undo.setVisibility(Button.INVISIBLE);
             }
         });
     }
 
-    //Funcion para guardar planes
-    private void savePlan() throws IOException {
-        Long tsLong = System.currentTimeMillis()/1000;
-        String root = Environment.getExternalStorageDirectory().getPath();
-        System.out.println(root);
-        File fpDir = new File(root + "/FligtPlanner");
-        if (!fpDir.exists()){
-            fpDir.mkdirs();
-        }
-        File saveFile = new File("plan_"+ tsLong.toString()+".fplan");
-        if (!saveFile.exists()){
-            saveFile.createNewFile();
-        }
-        FileOutputStream outputStream = new FileOutputStream(saveFile);
-        OutputStreamWriter outputStreamWriter = new OutputStreamWriter(outputStream);
-        try{
-            for (LatLng point : ptsRoute){
-                outputStreamWriter.append(point.toString()+"\n");
-            }
-        }catch (IOException e){
+    private static boolean checkStoragePermision(){
 
-        }
+        return true;
+
     }
 
 
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    }
 
     public interface OnMapEditorFragmentListener {
 

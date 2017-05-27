@@ -66,6 +66,11 @@ public class MapEditorActivity extends Activity implements MapEditorFragment.OnM
 
     @Override
     public void onMapEditorFragmentCanceled(LatLng camPos, float camZoom) {
+        Intent returnIntent = new Intent();
+        returnIntent.putExtra("camPos", camPos);
+        returnIntent.putExtra("camZoom", camZoom);
+        setResult(Activity.RESULT_CANCELED, returnIntent);
+        finish();
 
 
     }

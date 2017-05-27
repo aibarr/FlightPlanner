@@ -38,6 +38,8 @@ public class MapPlannerFragment extends Fragment {
     private OnMapReadyCallback mapReady;
     private Polyline ruta;
     private PolylineOptions optRuta;
+    private LatLng target;
+    private float zoom;
 
     //Datos a mostrar
     private List<LatLng> ptsRoute;
@@ -70,15 +72,26 @@ public class MapPlannerFragment extends Fragment {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
+        ptsRoute = new ArrayList<LatLng>();
         if (savedInstanceState != null){
-
-
+            Bundle bundle = new Bundle(savedInstanceState);
+            zoom = bundle.getFloat("zoom");
+            target = (LatLng) bundle.get("target");
+            latitudes = (ArrayList<Double>) bundle.getSerializable("latitudes");
+            longitudes = (ArrayList<Double>) bundle.getSerializable("longitudes");
+            for(int i= 0; i < latitudes.size(); i++){
+                ptsRoute.add(new LatLng(latitudes.get(i), longitudes.get(i)));
+            }
+        }else {
+            target = new LatLng(0.0, 0.0);
+            zoom = 5;
         }
 
         if (getArguments() != null) {
-
         }
+
         setHasOptionsMenu(true);
     }
 
@@ -91,14 +104,14 @@ public class MapPlannerFragment extends Fragment {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        LatLng camPos = googleMap.getCameraPosition().target;
-        float camZoom = googleMap.getCameraPosition().zoom;
+        target = googleMap.getCameraPosition().target;
+        zoom = googleMap.getCameraPosition().zoom;
         System.out.println("Se infló el menú");
         switch (item.getItemId()){
             case R.id.start_editor:
                 Intent intent = new Intent(getActivity(), MapEditorActivity.class);
-                intent.putExtra("camPos", camPos);
-                intent.putExtra("camZoom", camZoom);
+                intent.putExtra("camPos", target);
+                intent.putExtra("camZoom", zoom);
                 startActivityForResult(intent, NEW_PLAN);
                 break;
             case R.id.edit_plan:
@@ -107,16 +120,16 @@ public class MapPlannerFragment extends Fragment {
                     editIntent.putExtra("latitudes", latitudes);
                     editIntent.putExtra("longitudes", longitudes);
                 }
+                editIntent.putExtra("camPos", target);
+                editIntent.putExtra("camZoom", zoom);
                 startActivityForResult(editIntent, EDIT_PLAN);
                 break;
             case R.id.load_plan:
-                Intent loadIntent = new Intent(getActivity(), MapEditorActivity.class);
-                startActivityForResult(loadIntent, LOAD_PLAN);
+
                 break;
             default:
                 break;
         }
-
         return super.onOptionsItemSelected(item);
     }
 
@@ -142,45 +155,20 @@ public class MapPlannerFragment extends Fragment {
             public void onMapReady(GoogleMap mMap) {
                 System.out.println("Mapa Listo!");
                 googleMap = mMap;
-
                 googleMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(target,zoom));
             }
         });
-
-        /*drawPolygon = (Button) rootView.findViewById(R.id.drawPolygon);
-
-        drawPolygon.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                zona = null;
-                googleMap.clear();
-
-                googleMap.setOnMapClickListener(new OnMapClickListener() {
-                    final List<LatLng> ptsZona = new ArrayList<LatLng>();
-
-                    @Override
-                    public void onMapClick(LatLng latLng) {
-                        ptsZona.add(latLng);
-                        googleMap.addMarker(new MarkerOptions().position(latLng));
-                        if (ptsZona.size()>2){
-                            if(zona != null){
-                                zona.setPoints(ptsZona);
-
-                            }else {
-                                optZona = new PolygonOptions();
-                                optZona.addAll(ptsZona);
-                                zona = googleMap.addPolygon(optZona);
-                            }
-                        }
-                    }
-                });
-            }
-        });*/
 
         // Inflate the layout for this fragment
         return rootView;
     }
 
+    @Override
+    public void onStart() {
+        super.onStart();
+        mapPlannerView.onStart();
+    }
 
     // TODO: Rename method, update argument and hook method into UI event
     public void onButtonPressed(Uri uri) {
@@ -203,9 +191,10 @@ public class MapPlannerFragment extends Fragment {
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
+        mapPlannerView.onSaveInstanceState(outState);
         if(googleMap != null){
-            outState.putParcelable("camPos", googleMap.getCameraPosition().target);
-            outState.putDouble("camZoom", googleMap.getCameraPosition().zoom);
+            outState.putParcelable("target", googleMap.getCameraPosition().target);
+            outState.putDouble("zoom", googleMap.getCameraPosition().zoom);
         }
 
         if (ptsRoute != null){
@@ -218,13 +207,36 @@ public class MapPlannerFragment extends Fragment {
             outState.putSerializable("latitudes", latitudes);
             outState.putSerializable("longitudes", longitudes);
         }
-        mapPlannerView.onSaveInstanceState(outState);
     }
 
     @Override
     public void onDetach() {
         super.onDetach();
         mListener = null;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mapPlannerView.onDestroy();
+    }
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        mapPlannerView.onLowMemory();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        mapPlannerView.onResume();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        mapPlannerView.onStop();
     }
 
     @Override
@@ -239,7 +251,9 @@ public class MapPlannerFragment extends Fragment {
                     latitudes = (ArrayList<Double>) data.getSerializableExtra("latitudes");
                     longitudes = (ArrayList<Double>) data.getSerializableExtra("longitudes");
                     System.out.println(latitudes.toString());
-                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom((LatLng) bundle.get("camPos"), bundle.getFloat("camZoom")));
+                    target = (LatLng) bundle.get("camPos");
+                    zoom = bundle.getFloat("camZoom");
+                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(target,zoom));
                     optRuta = new PolylineOptions();
                     ptsRoute = new ArrayList<LatLng>();
                     for (int i=0; i < latitudes.size(); i++ ){
@@ -255,6 +269,22 @@ public class MapPlannerFragment extends Fragment {
                 case LOAD_PLAN:
                     break;
             }
+        }
+
+        if (resultCode== Activity.RESULT_CANCELED){
+            Bundle bundle = data.getExtras();
+            switch (requestCode){
+                case NEW_PLAN:
+                    target = (LatLng) bundle.get("camPos");
+                    zoom = bundle.getFloat("camZoom");
+                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(target,zoom));
+                    break;
+                case EDIT_PLAN:
+                    break;
+                case LOAD_PLAN:
+                    break;
+            }
+
         }
 
 
