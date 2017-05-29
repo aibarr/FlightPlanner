@@ -1,7 +1,8 @@
 package cl.usach.abarra.flightplanner;
 
 import android.annotation.TargetApi;
-import android.app.Activity;
+import android.support.v4.app.ActivityCompat;
+import android.support.v7.app.AppCompatActivity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -9,14 +10,13 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.app.Fragment;
+import android.support.v4.app.Fragment;
 import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.v4.app.ActivityCompat;
-import android.app.FragmentManager;
+import android.support.design.widget.BottomSheetBehavior;
+
 import android.support.v4.content.ContextCompat;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -24,12 +24,10 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 
-import com.codekidlabs.storagechooser.Content;
-import com.codekidlabs.storagechooser.StorageChooser;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
@@ -43,14 +41,7 @@ import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.security.Permission;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Stack;
 
@@ -114,6 +105,9 @@ public class MapEditorFragment extends Fragment {
     //Textos del fragment
     TextView statusBar;
 
+    //Utilitarios del Bottom Sheet
+    private LinearLayout bottomSheet;
+
     public MapEditorFragment() {
         // Required empty public constructor
     }
@@ -157,9 +151,9 @@ public class MapEditorFragment extends Fragment {
             System.out.println("pts rec: "+ptsRoute.toString());
 
         }
+
         polygonOptions = new PolygonOptions();
         polygonList = new ArrayList<Polygon>();
-
         setHasOptionsMenu(true);
     }
 
@@ -240,8 +234,16 @@ public class MapEditorFragment extends Fragment {
                 System.out.println("Pts Play: "+ptsRoute.toString());
                 route = map.addPolyline(optRoute);
                 route.setPoints(ptsRoute);
+                map.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+                    @Override
+                    public boolean onMarkerClick(Marker marker) {
+                        return false;
+                    }
+                });
             }
         });
+
+
 
         //Flag para Linea "1"
         createLine = (Button) rootView.findViewById(R.id.create_line);
@@ -276,6 +278,8 @@ public class MapEditorFragment extends Fragment {
                         }
                     }
                 });
+
+
 
 
             }
@@ -432,6 +436,7 @@ public class MapEditorFragment extends Fragment {
     @Override
     public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
     }
 
 
@@ -442,7 +447,6 @@ public class MapEditorFragment extends Fragment {
         }
     }*/
 
-    @TargetApi(23)
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
@@ -454,17 +458,6 @@ public class MapEditorFragment extends Fragment {
         }
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public void onAttach(Activity activity) {
-        super.onAttach(activity);
-        if (activity instanceof OnMapEditorFragmentListener) {
-            mListener = (OnMapEditorFragmentListener) activity;
-        } else {
-            throw new RuntimeException(activity.toString()
-                    + " must implement OnFragmentInteractionListener");
-        }
-    }
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
@@ -590,16 +583,6 @@ public class MapEditorFragment extends Fragment {
         }
         return true;
     }
-
-    private static boolean checkStoragePermision(){
-
-        return true;
-
-    }
-
-
-
-
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {

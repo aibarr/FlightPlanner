@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/main_screen"
+            android:icon="@drawable/ic_menu_camera"
+            android:title="Inicio" />
+        <item
+            android:id="@+id/calibrate_wizzard"
+            android:icon="@drawable/ic_menu_gallery"
+            android:title="Calibrar" />
+    </group>
+
+    <item android:title="Ajustes">
+        <menu>
+            <item
+                android:id="@+id/settings"
+                android:icon="@drawable/ic_menu_manage"
+                android:title="Generales" />
+            <item
+                android:id="@+id/plan_settings"
+                android:icon="@drawable/ic_menu_send"
+                android:title="Planificación" />
+        </menu>
+    </item>
+
+</menu>

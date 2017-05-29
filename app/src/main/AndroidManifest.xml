@@ -3,7 +3,7 @@
     package="cl.usach.abarra.flightplanner">
 
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <uses-feature android:name="android.hardware.location.gps" />
 
@@ -20,17 +20,18 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyDkSLeNFv1QoT8jTs8AROSxRPXS_9kJng4" />
 
-        <activity android:name=".MainActivity" />
+        <activity android:name=".MainActivity"></activity>
+        <activity android:name=".MapEditorActivity" />
         <activity
-            android:name=".MMenuActivity"
-            android:label="@string/title_activity_mmenu">
+            android:name=".MainScreenActivity"
+            android:label="@string/title_activity_main_screen"
+            android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".MapEditorActivity"></activity>
     </application>
 
 </manifest>

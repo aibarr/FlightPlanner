@@ -1,11 +1,7 @@
 package cl.usach.abarra.flightplanner;
 
-import android.app.Activity;
-import android.app.AlertDialog;
-import android.content.Context;
-import android.content.DialogInterface;
+import android.support.v7.app.AppCompatActivity;
 import android.content.Intent;
-import android.os.Build;
 import android.os.Bundle;
 
 import com.google.android.gms.maps.model.LatLng;
@@ -14,9 +10,11 @@ import com.google.android.gms.maps.model.Polygon;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MapEditorActivity extends Activity implements MapEditorFragment.OnMapEditorFragmentListener{
+public class MapEditorActivity extends AppCompatActivity implements MapEditorFragment.OnMapEditorFragmentListener{
 
     private Bundle intentData;
+
+    private MapEditorFragment mapEditorFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,37 +24,14 @@ public class MapEditorActivity extends Activity implements MapEditorFragment.OnM
         LatLng camPosi = (LatLng) intentData.get("camPos");
         float cameZoom = intentData.getFloat("camZoom");
         setContentView(R.layout.activity_map_editor);
-        MapEditorFragment mapEditorFragment = MapEditorFragment.newInstance(camPosi, cameZoom);
-        getFragmentManager().beginTransaction().replace( R.id.editor_container, mapEditorFragment).commit();
+        mapEditorFragment = MapEditorFragment.newInstance(camPosi, cameZoom);
+        getSupportFragmentManager().beginTransaction().replace( R.id.editor_container, mapEditorFragment).commit();
     }
 
     @Override
     public void onBackPressed() {
         super.onBackPressed();
-        AlertDialog.Builder builder;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            builder = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert);
-        } else {
-            builder = new AlertDialog.Builder(this);
-        }
-
-        builder.setTitle("Cerrando Editor")
-                .setMessage("Está cerrando el editor, se perderán todos sus progresos. ¿Está seguro que desea continuar?")
-                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        setResult(Activity.RESULT_CANCELED, null);
-                        finish();
-                    }
-                })
-                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        return;
-                    }
-                })
-                .show();
-
+        mapEditorFragment.closeEditor();
     }
 
     @Override
@@ -69,7 +44,7 @@ public class MapEditorActivity extends Activity implements MapEditorFragment.OnM
         Intent returnIntent = new Intent();
         returnIntent.putExtra("camPos", camPos);
         returnIntent.putExtra("camZoom", camZoom);
-        setResult(Activity.RESULT_CANCELED, returnIntent);
+        setResult(AppCompatActivity.RESULT_CANCELED, returnIntent);
         finish();
 
 
@@ -94,7 +69,7 @@ public class MapEditorActivity extends Activity implements MapEditorFragment.OnM
         returnIntent.putStringArrayListExtra("polygons", (ArrayList<String>) polygons);
         returnIntent.putExtra("camPos", camPos);
         returnIntent.putExtra("camZoom", camZoom);
-        setResult(Activity.RESULT_OK, returnIntent);
+        setResult(AppCompatActivity.RESULT_OK, returnIntent);
         finish();
     }
 }

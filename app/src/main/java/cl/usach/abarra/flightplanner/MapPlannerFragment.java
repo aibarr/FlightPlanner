@@ -1,11 +1,11 @@
 package cl.usach.abarra.flightplanner;
 
-import android.app.Activity;
+import android.support.v7.app.AppCompatActivity;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.app.Fragment;
+import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -56,7 +56,7 @@ public class MapPlannerFragment extends Fragment {
 
 
 
-    private OnFragmentInteractionListener mListener;
+    private OnMapPlannerInteractionListener mListener;
 
     //Constructor
     public MapPlannerFragment() {
@@ -173,15 +173,15 @@ public class MapPlannerFragment extends Fragment {
     // TODO: Rename method, update argument and hook method into UI event
     public void onButtonPressed(Uri uri) {
         if (mListener != null) {
-            mListener.onFragmentInteraction(uri);
+            mListener.onMapPlannerInteraction(uri);
         }
     }
 
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        if (context instanceof OnFragmentInteractionListener) {
-            mListener = (OnFragmentInteractionListener) context;
+        if (context instanceof OnMapPlannerInteractionListener) {
+            mListener = (OnMapPlannerInteractionListener) context;
         } else {
             throw new RuntimeException(context.toString()
                     + " must implement OnFragmentInteractionListener");
@@ -244,7 +244,7 @@ public class MapPlannerFragment extends Fragment {
         super.onActivityResult(requestCode, resultCode, data);
         System.out.println("reqCode "+ requestCode);
 
-        if (resultCode== Activity.RESULT_OK){
+        if (resultCode== AppCompatActivity.RESULT_OK){
             switch (requestCode){
                 case NEW_PLAN:
                     Bundle bundle = data.getExtras();
@@ -271,25 +271,22 @@ public class MapPlannerFragment extends Fragment {
             }
         }
 
-        if (resultCode== Activity.RESULT_CANCELED){
-            Bundle bundle = data.getExtras();
-            switch (requestCode){
-                case NEW_PLAN:
-                    target = (LatLng) bundle.get("camPos");
-                    zoom = bundle.getFloat("camZoom");
-                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(target,zoom));
-                    break;
-                case EDIT_PLAN:
-                    break;
-                case LOAD_PLAN:
-                    break;
+        if (resultCode== AppCompatActivity.RESULT_CANCELED){
+            if (data != null){
+                Bundle bundle = data.getExtras();
+                switch (requestCode){
+                    case NEW_PLAN:
+                        target = (LatLng) bundle.get("camPos");
+                        zoom = bundle.getFloat("camZoom");
+                        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(target,zoom));
+                        break;
+                    case EDIT_PLAN:
+                        break;
+                    case LOAD_PLAN:
+                        break;
+                }
             }
-
         }
-
-
-
-
     }
 
     /**
@@ -302,8 +299,8 @@ public class MapPlannerFragment extends Fragment {
      * "http://developer.android.com/training/basics/fragments/communicating.html"
      * >Communicating with Other Fragments</a> for more information.
      */
-    public interface OnFragmentInteractionListener {
+    public interface OnMapPlannerInteractionListener {
         // TODO: Update argument type and name
-        void onFragmentInteraction(Uri uri);
+        void onMapPlannerInteraction(Uri uri);
     }
 }
