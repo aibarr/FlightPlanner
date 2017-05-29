@@ -85,7 +85,7 @@ public class MapPlannerFragment extends Fragment {
                 ptsRoute.add(new LatLng(latitudes.get(i), longitudes.get(i)));
             }
         }else {
-            target = new LatLng(0.0, 0.0);
+            target = new LatLng(-33.512087318764834, -70.675048828125);
             zoom = 5;
         }
 

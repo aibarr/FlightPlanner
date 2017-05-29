@@ -14,7 +14,9 @@ import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
+import android.app.FragmentManager;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -26,6 +28,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
+import com.codekidlabs.storagechooser.Content;
+import com.codekidlabs.storagechooser.StorageChooser;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
@@ -85,6 +89,7 @@ public class MapEditorFragment extends Fragment {
 
     //Lista de polígonos creados durante la creación del plan de vuelo
     private List<Polygon> polygonList;
+    private ArrayList<ArrayList<LatLng>> polygons;
 
     //TODO: revisar utilidad de esta variable como global
     private PolygonOptions polygonOptions;
@@ -130,6 +135,7 @@ public class MapEditorFragment extends Fragment {
         ptsRoute= new ArrayList<LatLng>();
         undoStack = new Stack();
         markers = new ArrayList<Marker>();
+        polygons = new ArrayList<ArrayList<LatLng>>();
         if (getArguments() != null) {
             bundle = getArguments();
             target = (LatLng)bundle.get("target");
@@ -160,24 +166,33 @@ public class MapEditorFragment extends Fragment {
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         inflater.inflate(R.menu.map_editor_menu, menu);
+
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        int permissionCheck = 0;
         switch (item.getItemId()){
             case R.id.save_plan:
-                int permissionCheck = ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                permissionCheck = ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE);
                 if (permissionCheck == PackageManager.PERMISSION_GRANTED){
-                    PlanArchiver planArchiver = new PlanArchiver(ptsRoute, heights, speeds, polygonList );
+                    PlanArchiver planArchiver = new PlanArchiver(ptsRoute, heights, speeds, polygons );
                     planArchiver.savePlan(Environment.getExternalStorageDirectory().getPath()+"/FlightPlanner/");
                 } else {
                     ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, WRITE_REQUEST);
                 }
                 break;
             case R.id.load_plan:
+                permissionCheck = ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE);
                 PlanArchiver planLoader = new PlanArchiver();
-                planLoader.loadPlan();
-                //TODO: Lo demás para cargar el plan
+                if (permissionCheck == PackageManager.PERMISSION_GRANTED){
+                    System.out.println("esa good");
+                    planLoader.loadPlan(Environment.getExternalStorageDirectory().getPath()+"/FlightPlanner/"+"test.fplan");
+                    System.out.println(planLoader.getRoute().toString());
+                } else {
+                    ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, WRITE_REQUEST);
+                }
+                loadPlan(planLoader);
                 break;
             case R.id.close_editor:
                 closeEditor();
@@ -278,7 +293,7 @@ public class MapEditorFragment extends Fragment {
                 statusBar.setText("Creando Poligono");
 
                 //Lista de vertices para el polígono
-                final List<LatLng> vertices = new ArrayList<LatLng>();
+                final ArrayList<LatLng> vertices = new ArrayList<LatLng>();
 
                 if  (route==null){
                     route = map.addPolyline(optRoute = new PolylineOptions());
@@ -319,7 +334,7 @@ public class MapEditorFragment extends Fragment {
                 finishButton.setVisibility(Button.VISIBLE);
                 finishButton.setOnClickListener(new View.OnClickListener() {
                     @Override
-                    public void onClick(View v) {
+                    public void onClick(final View v) {
 
                         AlertDialog.Builder builder;
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -360,6 +375,7 @@ public class MapEditorFragment extends Fragment {
                                     public void onClick(DialogInterface dialog, int which) {
                                         buttonFlag  =  0;
                                         ptsRoute.addAll(vertices);
+                                        polygons.add(vertices);
                                         route.setPoints(ptsRoute);
                                         map.setOnMapClickListener(null);
                                         statusBar.setText("");
@@ -564,11 +580,24 @@ public class MapEditorFragment extends Fragment {
         });
     }
 
+    private boolean loadPlan(PlanArchiver planLoader){
+        ptsRoute = new ArrayList<LatLng>(planLoader.getRoute());
+        route = map.addPolyline(optRoute);
+        route.setPoints(ptsRoute);
+        for (LatLng point : ptsRoute){
+            Marker marker = map.addMarker(new MarkerOptions().position(point));
+            markers.add(marker);
+        }
+        return true;
+    }
+
     private static boolean checkStoragePermision(){
 
         return true;
 
     }
+
+
 
 
 
