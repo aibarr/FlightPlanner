@@ -21,10 +21,11 @@
             android:value="AIzaSyDkSLeNFv1QoT8jTs8AROSxRPXS_9kJng4" />
 
         <activity android:name=".MainActivity"></activity>
-        <activity android:name=".MapEditorActivity" />
+        <activity android:name=".MapEditorActivity"
+            android:label="Editor Plan"
+            />
         <activity
             android:name=".MainScreenActivity"
-            android:label="@string/title_activity_main_screen"
             android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

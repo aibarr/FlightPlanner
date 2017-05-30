@@ -124,7 +124,7 @@ public class PlanArchiver {
     }
 
 
-    public boolean savePlan (String filePath){
+    public String savePlan (String filePath){
 
         Calendar c = Calendar.getInstance();
         String fileName = c.get(Calendar.DATE)+c.get(Calendar.MONTH)+ c.get(Calendar.YEAR)+c.get(Calendar.HOUR_OF_DAY)+ c.get(Calendar.MINUTE)+".fplan";
@@ -159,7 +159,8 @@ public class PlanArchiver {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return true;
+
+        return fileName;
     }
 
     private static boolean isExternalStorageReadOnly() {
@@ -177,4 +178,5 @@ public class PlanArchiver {
         }
         return false;
     }
+
 }

@@ -91,7 +91,6 @@ public class MapPlannerFragment extends Fragment {
 
         if (getArguments() != null) {
         }
-
         setHasOptionsMenu(true);
     }
 
@@ -157,6 +156,7 @@ public class MapPlannerFragment extends Fragment {
                 googleMap = mMap;
                 googleMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
                 googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(target,zoom));
+
             }
         });
 

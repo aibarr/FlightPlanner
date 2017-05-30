@@ -3,6 +3,7 @@ package cl.usach.abarra.flightplanner;
 import android.support.v7.app.AppCompatActivity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
 
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Polygon;
@@ -24,6 +25,7 @@ public class MapEditorActivity extends AppCompatActivity implements MapEditorFra
         LatLng camPosi = (LatLng) intentData.get("camPos");
         float cameZoom = intentData.getFloat("camZoom");
         setContentView(R.layout.activity_map_editor);
+
         mapEditorFragment = MapEditorFragment.newInstance(camPosi, cameZoom);
         getSupportFragmentManager().beginTransaction().replace( R.id.editor_container, mapEditorFragment).commit();
     }

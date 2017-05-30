@@ -1,7 +1,9 @@
 package cl.usach.abarra.flightplanner;
 
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.PersistableBundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.view.View;
@@ -17,6 +19,8 @@ import android.view.MenuItem;
 public class MainScreenActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener,
 MapPlannerFragment.OnMapPlannerInteractionListener{
+
+    private int selectedItem;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,6 +38,8 @@ MapPlannerFragment.OnMapPlannerInteractionListener{
             }
         });
 
+
+
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
@@ -42,7 +48,14 @@ MapPlannerFragment.OnMapPlannerInteractionListener{
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+        if (savedInstanceState!=null){
 
+
+        }else {
+            selectedItem = R.id.main_screen;
+            getSupportActionBar().setTitle("Plan de Vuelo");
+            getSupportFragmentManager().beginTransaction().replace(R.id.main_container, new MapPlannerFragment()).commit();
+        }
     }
 
     @Override
@@ -58,7 +71,8 @@ MapPlannerFragment.OnMapPlannerInteractionListener{
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main_screen, menu);
+        //getMenuInflater().inflate(R.menu.main_screen, menu);
+        super.onCreateOptionsMenu(menu);
         return true;
     }
 
@@ -77,6 +91,14 @@ MapPlannerFragment.OnMapPlannerInteractionListener{
         return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    public void onSaveInstanceState(Bundle outState, PersistableBundle outPersistentState) {
+        super.onSaveInstanceState(outState, outPersistentState);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            outPersistentState.putInt("selectedItem", selectedItem);
+        }
+    }
+
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
@@ -84,12 +106,17 @@ MapPlannerFragment.OnMapPlannerInteractionListener{
         int id = item.getItemId();
 
         if (id == R.id.main_screen) {
+            selectedItem = id;
+            getSupportActionBar().setTitle("Plan de Vuelo");
             MapPlannerFragment mapPlannerFragment = new MapPlannerFragment();
             getSupportFragmentManager().beginTransaction().replace(R.id.main_container, mapPlannerFragment).commit();
         } else if (id == R.id.calibrate_wizzard) {
 
         } else if (id == R.id.settings) {
-
+            selectedItem = id;
+            getSupportActionBar().setTitle("Ajustes");
+            settingsFragment settingsFragment = new settingsFragment();
+            getSupportFragmentManager().beginTransaction().replace(R.id.main_container, settingsFragment).commit();
         } else if (id == R.id.plan_settings) {
 
         }

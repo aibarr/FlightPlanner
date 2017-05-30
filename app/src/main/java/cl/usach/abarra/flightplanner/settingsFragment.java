@@ -1,17 +1,12 @@
 package cl.usach.abarra.flightplanner;
 
-import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
-import android.app.Fragment;
-import android.preference.PreferenceFragment;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
+import android.support.v7.preference.PreferenceFragmentCompat;
 
 
 
-public class settingsFragment extends PreferenceFragment {
+public class settingsFragment extends PreferenceFragmentCompat {
 
 
     private OnSettingsInteractionListener mListener;
@@ -32,6 +27,11 @@ public class settingsFragment extends PreferenceFragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         addPreferencesFromResource(R.xml.preferences);
+    }
+
+    @Override
+    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+
     }
 
 

@@ -1,6 +1,5 @@
 package cl.usach.abarra.flightplanner;
 
-import android.annotation.TargetApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.app.AlertDialog;
@@ -24,8 +23,10 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -33,6 +34,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -41,12 +43,15 @@ import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 
 
 import cl.usach.abarra.flightplanner.util.PlanArchiver;
+import ir.sohreco.androidfilechooser.ExternalStorageNotAvailableException;
+import ir.sohreco.androidfilechooser.FileChooserDialog;
 
 
 public class MapEditorFragment extends Fragment {
@@ -107,6 +112,13 @@ public class MapEditorFragment extends Fragment {
 
     //Utilitarios del Bottom Sheet
     private LinearLayout bottomSheet;
+    private BottomSheetBehavior bottomSheetBehavior;
+    private Button bEraseMarker;
+    private Button bApplyChanges;
+
+    private EditText etLatitude;
+    private EditText etLongitude;
+    private EditText etSpeed;
 
     public MapEditorFragment() {
         // Required empty public constructor
@@ -130,6 +142,23 @@ public class MapEditorFragment extends Fragment {
         undoStack = new Stack();
         markers = new ArrayList<Marker>();
         polygons = new ArrayList<ArrayList<LatLng>>();
+
+        //Variables para el Bottom Sheet
+        bottomSheet = (LinearLayout) getActivity().findViewById(R.id.bs_bottom_sheet);
+        etLatitude = (EditText) getActivity().findViewById(R.id.et_latitud);
+        etLongitude = (EditText) getActivity().findViewById(R.id.et_longitud);
+        etSpeed = (EditText) getActivity().findViewById(R.id.et_speed);
+        bEraseMarker = (Button) getActivity().findViewById(R.id.bs_erase_marker);
+        bApplyChanges = (Button) getActivity().findViewById(R.id.bs_apply_marker);
+
+        //Set Bottom Sheet
+        bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
+        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+
+
+
+        polygonOptions = new PolygonOptions();
+        polygonList = new ArrayList<Polygon>();
         if (getArguments() != null) {
             bundle = getArguments();
             target = (LatLng)bundle.get("target");
@@ -151,9 +180,6 @@ public class MapEditorFragment extends Fragment {
             System.out.println("pts rec: "+ptsRoute.toString());
 
         }
-
-        polygonOptions = new PolygonOptions();
-        polygonList = new ArrayList<Polygon>();
         setHasOptionsMenu(true);
     }
 
@@ -171,22 +197,39 @@ public class MapEditorFragment extends Fragment {
                 permissionCheck = ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE);
                 if (permissionCheck == PackageManager.PERMISSION_GRANTED){
                     PlanArchiver planArchiver = new PlanArchiver(ptsRoute, heights, speeds, polygons );
-                    planArchiver.savePlan(Environment.getExternalStorageDirectory().getPath()+"/FlightPlanner/");
+                    String texToast;
+                    if ((texToast = planArchiver.savePlan(Environment.getExternalStorageDirectory().getPath()+"/FlightPlanner/"))!=null){
+                        Toast toast = Toast.makeText(getActivity(), texToast, Toast.LENGTH_LONG);
+                    }
                 } else {
                     ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, WRITE_REQUEST);
                 }
+
                 break;
+
             case R.id.load_plan:
                 permissionCheck = ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE);
-                PlanArchiver planLoader = new PlanArchiver();
+                final PlanArchiver planLoader = new PlanArchiver();
+                String [] fileList;
                 if (permissionCheck == PackageManager.PERMISSION_GRANTED){
-                    System.out.println("esa good");
-                    planLoader.loadPlan(Environment.getExternalStorageDirectory().getPath()+"/FlightPlanner/"+"test.fplan");
-                    System.out.println(planLoader.getRoute().toString());
+                    FileChooserDialog.Builder builder = new FileChooserDialog.Builder(FileChooserDialog.ChooserType.FILE_CHOOSER, new FileChooserDialog.ChooserListener() {
+                        @Override
+                        public void onSelect(String path) {
+                            System.out.println(path);
+                            planLoader.loadPlan(path);
+                            loadPlan(planLoader);
+                        }
+                    });
+                    builder.setInitialDirectory(new File(Environment.getExternalStorageDirectory().getPath()+"/FlightPlanner/"));
+                    try {
+                        builder.build().show(getActivity().getSupportFragmentManager(), null);
+                    } catch (ExternalStorageNotAvailableException e) {
+                        e.printStackTrace();
+                    }
+
                 } else {
                     ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, WRITE_REQUEST);
                 }
-                loadPlan(planLoader);
                 break;
             case R.id.close_editor:
                 closeEditor();
@@ -226,6 +269,10 @@ public class MapEditorFragment extends Fragment {
             public void onMapReady(GoogleMap googleMap) {
                 map = googleMap;
                 map.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+                UiSettings mapSettings = map.getUiSettings();
+                mapSettings.setMapToolbarEnabled(false);
+                mapSettings.setRotateGesturesEnabled(false);
+                mapSettings.setTiltGesturesEnabled(false);
                 if (target != null){
                     System.out.println("Target play: "+target);
                     map.moveCamera(CameraUpdateFactory.newLatLngZoom(target, zoom));
@@ -237,6 +284,7 @@ public class MapEditorFragment extends Fragment {
                 map.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
                     @Override
                     public boolean onMarkerClick(Marker marker) {
+                        editMarker(marker);
                         return false;
                     }
                 });
@@ -302,7 +350,6 @@ public class MapEditorFragment extends Fragment {
                 if  (route==null){
                     route = map.addPolyline(optRoute = new PolylineOptions());
                 }
-
 
                 map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
                     PolygonOptions tempPolygonOptions = new PolygonOptions();
@@ -400,6 +447,18 @@ public class MapEditorFragment extends Fragment {
         });
 
         Button clear = (Button) rootView.findViewById(R.id.clear_button);
+        clear.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                map.setOnMapClickListener(null);
+                map.clear();
+                route = map.addPolyline(optRoute);
+                ptsRoute.clear();
+                ptsCount = 0;
+                markers.clear();
+                undo.setVisibility(Button.INVISIBLE);
+            }
+        });
 
         undo = (Button) rootView.findViewById(R.id.undo_button);
 
@@ -411,17 +470,7 @@ public class MapEditorFragment extends Fragment {
             }
         });
 
-        clear.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                map.setOnMapClickListener(null);
-                map.clear();
-                route = map.addPolyline(optRoute);
-                ptsRoute.clear();
-                ptsCount = 0;
-                markers.clear();
-            }
-        });
+
 
 
         // Inflate the layout for this fragment
@@ -468,7 +517,6 @@ public class MapEditorFragment extends Fragment {
                 longitudes.add(point.longitude);
             }
         }
-
         System.out.println("Guardando");
         target = map.getCameraPosition().target;
         System.out.println("Target "+ target.toString());
@@ -584,6 +632,44 @@ public class MapEditorFragment extends Fragment {
         return true;
     }
 
+    private void editMarker(final Marker marker){
+        LatLng position = marker.getPosition();
+        etLatitude.setText(Double.toString(position.latitude), TextView.BufferType.EDITABLE);
+        etLongitude.setText(Double.toString(position.longitude), TextView.BufferType.EDITABLE);
+        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+        bEraseMarker.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                killMarker(marker);
+            }
+        });
+        bApplyChanges.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                moveMarker(marker, Double.parseDouble(etLatitude.getText().toString()), Double.parseDouble(etLongitude.getText().toString()) );
+            }
+        });
+    }
+
+    public void killMarker(Marker marker){
+        LatLng position = marker.getPosition();
+        markers.remove(marker);
+        marker.remove();
+        ptsRoute.remove(position);
+        route.setPoints(ptsRoute);
+        ptsCount--;
+        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+    }
+
+    public void moveMarker(Marker marker, Double latitude, Double longitude){
+        LatLng position = marker.getPosition();
+        LatLng newPosition =new LatLng(latitude, longitude);
+        marker.setPosition(newPosition );
+        ptsRoute.set(ptsRoute.indexOf(position), newPosition);
+        route.setPoints(ptsRoute);
+        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -597,6 +683,4 @@ public class MapEditorFragment extends Fragment {
 
         void onMapEditorFragmentFinishResult(List<LatLng> route, List<Polygon> polygonList, LatLng camPos, Float camZoom);
     }
-
-
 }
