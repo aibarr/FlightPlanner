@@ -1,5 +1,6 @@
 package cl.usach.abarra.flightplanner;
 
+import android.graphics.Bitmap;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.app.AlertDialog;
@@ -35,6 +36,7 @@ import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.UiSettings;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -46,9 +48,11 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Stack;
 
 
+import cl.usach.abarra.flightplanner.util.MarkerGenerator;
 import cl.usach.abarra.flightplanner.util.PlanArchiver;
 import ir.sohreco.androidfilechooser.ExternalStorageNotAvailableException;
 import ir.sohreco.androidfilechooser.FileChooserDialog;
@@ -76,6 +80,8 @@ public class MapEditorFragment extends Fragment {
     private Float[] speeds;
 
     private Stack   undoStack;
+
+    private MarkerGenerator markerGenerator;
 
     private static final int POINT = 0;
     private static final int POLYGON_POINT = 1;
@@ -133,6 +139,17 @@ public class MapEditorFragment extends Fragment {
         return fragment;
     }
 
+    public static MapEditorFragment newInstance(LatLng camPos, float camZoom, ArrayList<Double> latitudes, ArrayList<Double> longitudes) {
+        MapEditorFragment fragment = new MapEditorFragment();
+        Bundle args = new Bundle();
+        args.putParcelable("target", camPos);
+        args.putFloat("zoom", camZoom);
+        args.putSerializable("latitudes", latitudes);
+        args.putSerializable("longitudes", longitudes);
+        fragment.setArguments(args);
+        return fragment;
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -142,6 +159,9 @@ public class MapEditorFragment extends Fragment {
         undoStack = new Stack();
         markers = new ArrayList<Marker>();
         polygons = new ArrayList<ArrayList<LatLng>>();
+
+        //Abrimos un generador de marcadores
+        markerGenerator = new MarkerGenerator();
 
         //Variables para el Bottom Sheet
         bottomSheet = (LinearLayout) getActivity().findViewById(R.id.bs_bottom_sheet);
@@ -155,15 +175,25 @@ public class MapEditorFragment extends Fragment {
         bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
         bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
 
-
-
         polygonOptions = new PolygonOptions();
         polygonList = new ArrayList<Polygon>();
+
+        ptsCount = 0;
+
         if (getArguments() != null) {
             bundle = getArguments();
             target = (LatLng)bundle.get("target");
             zoom = bundle.getFloat("zoom");
+            latitudes = (ArrayList<Double>) bundle.getSerializable("latitudes");
+            longitudes = (ArrayList<Double>) bundle.getSerializable("longitudes");
+            if (latitudes!=null && !(latitudes.isEmpty())){
+                for(int i = 0; i < longitudes.size(); i++){
+                    ptsCount++;
+                    ptsRoute.add(new LatLng( latitudes.get(i), longitudes.get(i)));
+                }
+            }
         }
+
         if (savedInstanceState != null){
             saved = savedInstanceState;
             System.out.println("Bundle rec: "+saved.toString());
@@ -174,11 +204,10 @@ public class MapEditorFragment extends Fragment {
             longitudes = (ArrayList<Double>) saved.getSerializable("longitudes");
             System.out.println("Lat Rec "+latitudes.toString());
             for(int i = 0; i < longitudes.size(); i++){
+                ptsCount++;
                 ptsRoute.add(new LatLng( latitudes.get(i), longitudes.get(i)));
             }
-
             System.out.println("pts rec: "+ptsRoute.toString());
-
         }
         setHasOptionsMenu(true);
     }
@@ -280,6 +309,22 @@ public class MapEditorFragment extends Fragment {
                 }
                 System.out.println("Pts Play: "+ptsRoute.toString());
                 route = map.addPolyline(optRoute);
+                if (!ptsRoute.isEmpty()){
+                    if (undo.getVisibility()==Button.INVISIBLE) {
+                        undo.setVisibility(Button.VISIBLE);
+                        setUndoButton();
+                    }
+                    int markCount = 0;
+                    for (LatLng point : ptsRoute){
+                        markCount++;
+                        Bitmap bitmap = markerGenerator.makeBitmap(getContext(), String.valueOf(markCount));
+                        Marker marker = map.addMarker(new MarkerOptions().position(point).icon(BitmapDescriptorFactory.fromBitmap(bitmap)));
+                        markers.add(marker);
+                        undoStack.push(POINT);
+
+                    }
+                }
+
                 route.setPoints(ptsRoute);
                 map.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
                     @Override
@@ -314,12 +359,13 @@ public class MapEditorFragment extends Fragment {
                 map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
                     @Override
                     public void onMapClick(LatLng latLng) {
-                        Marker marker = map.addMarker(new MarkerOptions().position(latLng));
+                        ptsCount++;
+                        Bitmap bitmap = markerGenerator.makeBitmap(getContext(), String.valueOf(ptsCount));
+                        Marker marker = map.addMarker(new MarkerOptions().position(latLng).icon(BitmapDescriptorFactory.fromBitmap(bitmap)));
                         ptsRoute.add(latLng);
                         markers.add(marker);
                         undoStack.push(POINT);
                         route.setPoints(ptsRoute);
-                        ptsCount++;
                         if (undo.getVisibility()==Button.INVISIBLE) {
                             undo.setVisibility(Button.VISIBLE);
                             setUndoButton();
@@ -674,6 +720,10 @@ public class MapEditorFragment extends Fragment {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
+
+
+
+
 
     public interface OnMapEditorFragmentListener {
 
