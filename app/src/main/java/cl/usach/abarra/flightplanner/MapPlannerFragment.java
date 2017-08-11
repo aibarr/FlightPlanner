@@ -1,5 +1,13 @@
 package cl.usach.abarra.flightplanner;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.content.Context;
 import android.content.Intent;
@@ -20,7 +28,9 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
@@ -29,6 +39,8 @@ import com.google.android.gms.maps.model.PolylineOptions;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import cl.usach.abarra.flightplanner.util.MarkerGenerator;
 
 
 public class MapPlannerFragment extends Fragment {
@@ -49,14 +61,24 @@ public class MapPlannerFragment extends Fragment {
     private ArrayList<Double> latitudes;
     private ArrayList<Double> longitudes;
 
+    private MarkerGenerator markerGenerator;
+    private int permissionCheck;
+
     //Constantes de Inicio del editor
     public static final int NEW_PLAN = 0;
     public static final int EDIT_PLAN = 1;
     public static final int LOAD_PLAN = 2;
 
+    private static final int LOCATION_REQUEST = 0;
+
 
 
     private OnMapPlannerInteractionListener mListener;
+
+    private LocationManager locationManager;
+    private LocationListener locationListener;
+
+    private LatLng lastLocation;
 
     //Constructor
     public MapPlannerFragment() {
@@ -75,6 +97,42 @@ public class MapPlannerFragment extends Fragment {
 
         super.onCreate(savedInstanceState);
         ptsRoute = new ArrayList<LatLng>();
+
+        markerGenerator = new MarkerGenerator();
+
+
+        permissionCheck = ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION);
+        if (permissionCheck != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(getActivity(), new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_REQUEST);
+        } else {
+            locationManager = (LocationManager) getActivity().getSystemService(Context.LOCATION_SERVICE);
+
+            locationListener = new LocationListener() {
+                @Override
+                public void onLocationChanged(Location location) {
+                    lastLocation = new LatLng(location.getLatitude(),location.getLongitude());
+
+                }
+
+                @Override
+                public void onStatusChanged(String provider, int status, Bundle extras) {
+
+                }
+
+                @Override
+                public void onProviderEnabled(String provider) {
+
+                }
+
+                @Override
+                public void onProviderDisabled(String provider) {
+
+                }
+            };
+
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+        }
+
         if (savedInstanceState != null){
             Bundle bundle = new Bundle(savedInstanceState);
             zoom = bundle.getFloat("zoom");
@@ -85,7 +143,11 @@ public class MapPlannerFragment extends Fragment {
                 ptsRoute.add(new LatLng(latitudes.get(i), longitudes.get(i)));
             }
         }else {
-            target = new LatLng(-33.512087318764834, -70.675048828125);
+            if(lastLocation != null){
+                target = lastLocation;
+            }else{
+                target = new LatLng(-33.512087318764834, -70.675048828125);
+            }
             zoom = 5;
         }
 
@@ -105,7 +167,6 @@ public class MapPlannerFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem item) {
         target = googleMap.getCameraPosition().target;
         zoom = googleMap.getCameraPosition().zoom;
-        System.out.println("Se infló el menú");
         switch (item.getItemId()){
             case R.id.start_editor:
                 Intent intent = new Intent(getActivity(), MapEditorActivity.class);
@@ -194,7 +255,7 @@ public class MapPlannerFragment extends Fragment {
         mapPlannerView.onSaveInstanceState(outState);
         if(googleMap != null){
             outState.putParcelable("target", googleMap.getCameraPosition().target);
-            outState.putDouble("zoom", googleMap.getCameraPosition().zoom);
+            outState.putFloat("zoom", googleMap.getCameraPosition().zoom);
         }
 
         if (ptsRoute != null){
@@ -243,11 +304,12 @@ public class MapPlannerFragment extends Fragment {
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         System.out.println("reqCode "+ requestCode);
-
+        Bundle bundle;
         if (resultCode== AppCompatActivity.RESULT_OK){
+            bundle = data.getExtras();
+            int markCount = 0;
             switch (requestCode){
                 case NEW_PLAN:
-                    Bundle bundle = data.getExtras();
                     latitudes = (ArrayList<Double>) data.getSerializableExtra("latitudes");
                     longitudes = (ArrayList<Double>) data.getSerializableExtra("longitudes");
                     System.out.println(latitudes.toString());
@@ -256,15 +318,37 @@ public class MapPlannerFragment extends Fragment {
                     googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(target,zoom));
                     optRuta = new PolylineOptions();
                     ptsRoute = new ArrayList<LatLng>();
+
                     for (int i=0; i < latitudes.size(); i++ ){
+                        markCount++;
                         LatLng punto = new LatLng(latitudes.get(i), longitudes.get(i) );
-                        googleMap.addMarker(new MarkerOptions().position(punto));
+                        Bitmap bitmap = markerGenerator.makeBitmap(getContext(), String.valueOf(markCount));
+                        googleMap.addMarker(new MarkerOptions().position(punto).icon(BitmapDescriptorFactory.fromBitmap(bitmap)));
                         ptsRoute.add(punto);
                     }
                     ruta = googleMap.addPolyline(optRuta);
                     ruta.setPoints(ptsRoute);
                     break;
                 case EDIT_PLAN:
+                    googleMap.clear();
+                    latitudes = (ArrayList<Double>) data.getSerializableExtra("latitudes");
+                    longitudes = (ArrayList<Double>) data.getSerializableExtra("longitudes");
+                    System.out.println(latitudes.toString());
+                    target = (LatLng) bundle.get("camPos");
+                    zoom = bundle.getFloat("camZoom");
+                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(target,zoom));
+                    optRuta = new PolylineOptions();
+                    ptsRoute = new ArrayList<LatLng>();
+
+                    for (int i=0; i < latitudes.size(); i++ ){
+                        markCount++;
+                        LatLng punto = new LatLng(latitudes.get(i), longitudes.get(i) );
+                        Bitmap bitmap = markerGenerator.makeBitmap(getContext(), String.valueOf(markCount));
+                        googleMap.addMarker(new MarkerOptions().position(punto).icon(BitmapDescriptorFactory.fromBitmap(bitmap)));
+                        ptsRoute.add(punto);
+                    }
+                    ruta = googleMap.addPolyline(optRuta);
+                    ruta.setPoints(ptsRoute);
                     break;
                 case LOAD_PLAN:
                     break;
@@ -273,7 +357,7 @@ public class MapPlannerFragment extends Fragment {
 
         if (resultCode== AppCompatActivity.RESULT_CANCELED){
             if (data != null){
-                Bundle bundle = data.getExtras();
+                bundle = data.getExtras();
                 switch (requestCode){
                     case NEW_PLAN:
                         target = (LatLng) bundle.get("camPos");
