@@ -1,6 +1,7 @@
 package cl.usach.abarra.flightplanner;
 
 import android.graphics.Bitmap;
+import android.location.Location;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.app.AlertDialog;
@@ -44,6 +45,7 @@ import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.maps.android.SphericalUtil;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -78,6 +80,8 @@ public class MapEditorFragment extends Fragment {
     private PolylineOptions optRoute;
     private Float[] heights;
     private Float[] speeds;
+
+    private double distance;
 
     private Stack   undoStack;
 
@@ -153,6 +157,9 @@ public class MapEditorFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        distance = 0;
+
         latitudes = new ArrayList<Double>();
         longitudes = new ArrayList<Double>();
         ptsRoute= new ArrayList<LatLng>();
@@ -556,7 +563,7 @@ public class MapEditorFragment extends Fragment {
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
-
+        System.out.println(latitudes.toString());
         if (ptsRoute!= null){
             for (LatLng point: ptsRoute){
                 latitudes.add(point.latitude);
@@ -671,13 +678,17 @@ public class MapEditorFragment extends Fragment {
         ptsRoute = new ArrayList<LatLng>(planLoader.getRoute());
         route = map.addPolyline(optRoute);
         route.setPoints(ptsRoute);
+        int markCount = 0;
         for (LatLng point : ptsRoute){
-            Marker marker = map.addMarker(new MarkerOptions().position(point));
+            markCount++;
+            Bitmap bitmap = markerGenerator.makeBitmap(getContext(), String.valueOf(markCount));
+            Marker marker = map.addMarker(new MarkerOptions().position(point).icon(BitmapDescriptorFactory.fromBitmap(bitmap)));
             markers.add(marker);
         }
         return true;
     }
 
+    //Funciones para la edicion de marcadores
     private void editMarker(final Marker marker){
         LatLng position = marker.getPosition();
         etLatitude.setText(Double.toString(position.latitude), TextView.BufferType.EDITABLE);
@@ -714,6 +725,15 @@ public class MapEditorFragment extends Fragment {
         ptsRoute.set(ptsRoute.indexOf(position), newPosition);
         route.setPoints(ptsRoute);
         bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+    }
+
+    //Funciones para calcular distancia
+
+    private void calculateDistance(){
+
+        for (int i = 0; i<ptsRoute.size(); i++){
+            distance += SphericalUtil.computeDistanceBetween(ptsRoute.get(i), ptsRoute.get(i+1));
+        }
     }
 
     @Override

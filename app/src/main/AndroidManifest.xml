@@ -20,7 +20,10 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyDkSLeNFv1QoT8jTs8AROSxRPXS_9kJng4" />
 
-        <activity android:name=".MainActivity"></activity>
+        <activity android:name=".MainActivity">
+
+        </activity>
+
         <activity android:name=".MapEditorActivity"
             android:label="Editor Plan"
             />

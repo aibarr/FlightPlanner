@@ -24,9 +24,18 @@ public class MapEditorActivity extends AppCompatActivity implements MapEditorFra
         System.out.println("Intent: "+intentData.toString());
         LatLng camPosi = (LatLng) intentData.get("camPos");
         float cameZoom = intentData.getFloat("camZoom");
+        if (intentData.getSerializable("latitudes")!=null){
+            ArrayList<Double> latitudes = new ArrayList<Double>();
+            ArrayList<Double> longitudes = new ArrayList<Double>();
+            latitudes = (ArrayList<Double>) intentData.getSerializable("latitudes");
+            longitudes = (ArrayList<Double>) intentData.getSerializable("longitudes");
+            mapEditorFragment = MapEditorFragment.newInstance(camPosi, cameZoom, latitudes, longitudes);
+        } else {
+            mapEditorFragment = MapEditorFragment.newInstance(camPosi, cameZoom);
+        }
+
         setContentView(R.layout.activity_map_editor);
 
-        mapEditorFragment = MapEditorFragment.newInstance(camPosi, cameZoom);
         getSupportFragmentManager().beginTransaction().replace( R.id.editor_container, mapEditorFragment).commit();
     }
 
@@ -48,8 +57,6 @@ public class MapEditorActivity extends AppCompatActivity implements MapEditorFra
         returnIntent.putExtra("camZoom", camZoom);
         setResult(AppCompatActivity.RESULT_CANCELED, returnIntent);
         finish();
-
-
     }
 
     @Override
@@ -58,10 +65,12 @@ public class MapEditorActivity extends AppCompatActivity implements MapEditorFra
         ArrayList<Double>    latitudes = new ArrayList<Double>();
         ArrayList<Double>    longitudes = new ArrayList<Double>();
         List<String>    polygons = new ArrayList<String>();
+
         for (LatLng point : route){
             latitudes.add(point.latitude);
             longitudes.add(point.longitude);
         }
+
         for (Polygon polygon : polygonList){
             polygons.add(polygon.getPoints().toString());
         }
