@@ -2,6 +2,10 @@ package cl.usach.abarra.flightplanner;
 
 import android.graphics.Bitmap;
 import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.os.AsyncTask;
+import android.os.Parcelable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.app.AlertDialog;
@@ -48,6 +52,8 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.maps.android.SphericalUtil;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +62,7 @@ import java.util.Stack;
 
 import cl.usach.abarra.flightplanner.util.MarkerGenerator;
 import cl.usach.abarra.flightplanner.util.PlanArchiver;
+import cl.usach.abarra.flightplanner.model.Waypoint;
 import ir.sohreco.androidfilechooser.ExternalStorageNotAvailableException;
 import ir.sohreco.androidfilechooser.FileChooserDialog;
 
@@ -81,7 +88,7 @@ public class MapEditorFragment extends Fragment {
     private Float[] heights;
     private Float[] speeds;
 
-    private double distance;
+    private List<Waypoint> waypoints;
 
     private Stack   undoStack;
 
@@ -92,6 +99,14 @@ public class MapEditorFragment extends Fragment {
     private static final int POLYGON = 2;
 
     private static final int WRITE_REQUEST = 0;
+
+    private int permissionCheck;
+    private LocationManager locationManager;
+    private LocationListener locationListener;
+
+    private static final int LOCATION_REQUEST = 0;
+
+    private LatLng lastLocation;
 
     //Lista de polígonos creados durante la creación del plan de vuelo
     private List<Polygon> polygonList;
@@ -108,9 +123,6 @@ public class MapEditorFragment extends Fragment {
     private LatLng target;
     private float zoom;
 
-    private ArrayList<Double> latitudes;
-    private ArrayList<Double> longitudes;
-
     //Botonería del fragment
     private Button createLine;
     private Button createPolygon;
@@ -119,6 +131,7 @@ public class MapEditorFragment extends Fragment {
 
     //Textos del fragment
     TextView statusBar;
+    TextView distanceText;
 
     //Utilitarios del Bottom Sheet
     private LinearLayout bottomSheet;
@@ -143,25 +156,20 @@ public class MapEditorFragment extends Fragment {
         return fragment;
     }
 
-    public static MapEditorFragment newInstance(LatLng camPos, float camZoom, ArrayList<Double> latitudes, ArrayList<Double> longitudes) {
+    public static MapEditorFragment newInstance(LatLng camPos, float camZoom, List<Waypoint> waypoints){
         MapEditorFragment fragment = new MapEditorFragment();
         Bundle args = new Bundle();
+        args.putParcelableArrayList("waypoints", (ArrayList<? extends Parcelable>) waypoints);
         args.putParcelable("target", camPos);
         args.putFloat("zoom", camZoom);
-        args.putSerializable("latitudes", latitudes);
-        args.putSerializable("longitudes", longitudes);
         fragment.setArguments(args);
         return fragment;
     }
 
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        distance = 0;
-
-        latitudes = new ArrayList<Double>();
-        longitudes = new ArrayList<Double>();
         ptsRoute= new ArrayList<LatLng>();
         undoStack = new Stack();
         markers = new ArrayList<Marker>();
@@ -169,6 +177,7 @@ public class MapEditorFragment extends Fragment {
 
         //Abrimos un generador de marcadores
         markerGenerator = new MarkerGenerator();
+
 
         //Variables para el Bottom Sheet
         bottomSheet = (LinearLayout) getActivity().findViewById(R.id.bs_bottom_sheet);
@@ -191,38 +200,72 @@ public class MapEditorFragment extends Fragment {
             bundle = getArguments();
             target = (LatLng)bundle.get("target");
             zoom = bundle.getFloat("zoom");
-            latitudes = (ArrayList<Double>) bundle.getSerializable("latitudes");
-            longitudes = (ArrayList<Double>) bundle.getSerializable("longitudes");
-            if (latitudes!=null && !(latitudes.isEmpty())){
-                for(int i = 0; i < longitudes.size(); i++){
+            waypoints = bundle.getParcelableArrayList("waypoints");
+            if (waypoints!= null){
+                for (Waypoint waypoint : waypoints){
+                    ptsRoute.add(waypoint.getPosition());
                     ptsCount++;
-                    ptsRoute.add(new LatLng( latitudes.get(i), longitudes.get(i)));
                 }
+            }else{
+                waypoints = new ArrayList<Waypoint>();
             }
         }
 
         if (savedInstanceState != null){
             saved = savedInstanceState;
-            System.out.println("Bundle rec: "+saved.toString());
+
             target = (LatLng) saved.getParcelable("target");
-            System.out.println("Target rec: "+target.toString());
-            zoom = savedInstanceState.getFloat("zoom");
-            latitudes = (ArrayList<Double>) saved.getSerializable("latitudes");
-            longitudes = (ArrayList<Double>) saved.getSerializable("longitudes");
-            System.out.println("Lat Rec "+latitudes.toString());
-            for(int i = 0; i < longitudes.size(); i++){
-                ptsCount++;
-                ptsRoute.add(new LatLng( latitudes.get(i), longitudes.get(i)));
+            zoom = saved.getFloat("zoom");
+
+            waypoints = saved.getParcelableArrayList("waypoints");
+            if (waypoints != null){
+                for (Waypoint waypoint: waypoints){
+                    ptsRoute.add(waypoint.getPosition());
+                }
+            }else{
+                waypoints = new ArrayList<Waypoint>();
             }
-            System.out.println("pts rec: "+ptsRoute.toString());
         }
+
         setHasOptionsMenu(true);
+
+        permissionCheck = ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION);
+
+        if (permissionCheck != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(getActivity(), new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_REQUEST);
+        } else {
+            locationManager = (LocationManager) getActivity().getSystemService(Context.LOCATION_SERVICE);
+
+            locationListener = new LocationListener() {
+                @Override
+                public void onLocationChanged(Location location) {
+                    lastLocation = new LatLng(location.getLatitude(),location.getLongitude());
+                }
+
+                @Override
+                public void onStatusChanged(String provider, int status, Bundle extras) {
+
+
+                }
+
+                @Override
+                public void onProviderEnabled(String provider) {
+
+                }
+
+                @Override
+                public void onProviderDisabled(String provider) {
+
+                }
+            };
+
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+        }
     }
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         inflater.inflate(R.menu.map_editor_menu, menu);
-
     }
 
     @Override
@@ -232,15 +275,23 @@ public class MapEditorFragment extends Fragment {
             case R.id.save_plan:
                 permissionCheck = ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE);
                 if (permissionCheck == PackageManager.PERMISSION_GRANTED){
-                    PlanArchiver planArchiver = new PlanArchiver(ptsRoute, heights, speeds, polygons );
-                    String texToast;
-                    if ((texToast = planArchiver.savePlan(Environment.getExternalStorageDirectory().getPath()+"/FlightPlanner/"))!=null){
-                        Toast toast = Toast.makeText(getActivity(), texToast, Toast.LENGTH_LONG);
+                    if (ptsRoute!=null && ptsRoute.size()>0){
+                        PlanArchiver planArchiver = new PlanArchiver(ptsRoute, heights, speeds, polygons );
+                        String texToast;
+                        if ((texToast = planArchiver.savePlan(Environment.getExternalStorageDirectory().getPath()+"/FlightPlanner/"))!=null){
+                            String textToast = "Se ha creado el archivo "+ texToast;
+                            Toast toast = Toast.makeText(getActivity(), textToast, Toast.LENGTH_LONG);
+                            toast.show();
+                        }
+                    }else{
+                        String textToast = "No hay nada para guardar";
+                        Toast toast = Toast.makeText(getActivity(), textToast, Toast.LENGTH_LONG);
+                        toast.show();
                     }
+
                 } else {
                     ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, WRITE_REQUEST);
                 }
-
                 break;
 
             case R.id.load_plan:
@@ -273,7 +324,6 @@ public class MapEditorFragment extends Fragment {
             default:
                 break;
         }
-
         return super.onOptionsItemSelected(item);
     }
 
@@ -282,6 +332,8 @@ public class MapEditorFragment extends Fragment {
         final View rootView = inflater.inflate(R.layout.fragment_map_editor, container, false);
 
         statusBar = (TextView) rootView.findViewById(R.id.status_barr);
+        distanceText = (TextView) rootView.findViewById(R.id.distance_text);
+
 
         //Obteniendo el mapa
         mapEditorView = (MapView) rootView.findViewById(R.id.map_editor_view);
@@ -367,7 +419,9 @@ public class MapEditorFragment extends Fragment {
                     @Override
                     public void onMapClick(LatLng latLng) {
                         ptsCount++;
-                        Bitmap bitmap = markerGenerator.makeBitmap(getContext(), String.valueOf(ptsCount));
+                        Waypoint waypoint = new Waypoint(latLng, 0, 0.0, 'w');
+                        waypoints.add(waypoint);
+                        Bitmap bitmap = markerGenerator.makeBitmap(getContext(), String.valueOf(waypoints.size()));
                         Marker marker = map.addMarker(new MarkerOptions().position(latLng).icon(BitmapDescriptorFactory.fromBitmap(bitmap)));
                         ptsRoute.add(latLng);
                         markers.add(marker);
@@ -377,12 +431,9 @@ public class MapEditorFragment extends Fragment {
                             undo.setVisibility(Button.VISIBLE);
                             setUndoButton();
                         }
+                        calculateDistance();
                     }
                 });
-
-
-
-
             }
         });
 
@@ -507,9 +558,11 @@ public class MapEditorFragment extends Fragment {
                 map.clear();
                 route = map.addPolyline(optRoute);
                 ptsRoute.clear();
+                waypoints.clear();
                 ptsCount = 0;
                 markers.clear();
                 undo.setVisibility(Button.INVISIBLE);
+                calculateDistance();
             }
         });
 
@@ -519,12 +572,11 @@ public class MapEditorFragment extends Fragment {
         homeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                if (lastLocation!=null && map!=null){
+                    map.addMarker(new MarkerOptions().position(lastLocation));
+                }
             }
         });
-
-
-
 
         // Inflate the layout for this fragment
         return rootView;
@@ -563,23 +615,14 @@ public class MapEditorFragment extends Fragment {
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
-        System.out.println(latitudes.toString());
-        if (ptsRoute!= null){
-            for (LatLng point: ptsRoute){
-                latitudes.add(point.latitude);
-                longitudes.add(point.longitude);
-            }
-        }
-        System.out.println("Guardando");
+
         target = map.getCameraPosition().target;
-        System.out.println("Target "+ target.toString());
         zoom = map.getCameraPosition().zoom;
-        System.out.println("Zoom"+zoom);
         outState.putParcelable("target", target);
         outState.putFloat("zoom", zoom);
-        outState.putSerializable("latitudes", latitudes);
-        outState.putSerializable("longitudes", longitudes);
-        System.out.println(outState.toString());
+
+        outState.putParcelableArrayList("waypoints", (ArrayList<? extends Parcelable>) waypoints);
+
         mapEditorView.onSaveInstanceState(outState);
         super.onSaveInstanceState(outState);
     }
@@ -632,7 +675,7 @@ public class MapEditorFragment extends Fragment {
                     .setPositiveButton("Guardar y cerrar", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            mListener.onMapEditorFragmentFinishResult(ptsRoute, polygonList, map.getCameraPosition().target, map.getCameraPosition().zoom);
+                            mListener.onMapEditorFragmentFinishResult(waypoints, polygonList, map.getCameraPosition().target, map.getCameraPosition().zoom);
                         }
                     })
                     .setNegativeButton("Cerrar sin guardar", new DialogInterface.OnClickListener() {
@@ -669,6 +712,7 @@ public class MapEditorFragment extends Fragment {
                         break;
                 }
                 ptsCount--;
+                calculateDistance();
                 if (ptsCount<=0) undo.setVisibility(Button.INVISIBLE);
             }
         });
@@ -730,10 +774,13 @@ public class MapEditorFragment extends Fragment {
     //Funciones para calcular distancia
 
     private void calculateDistance(){
-
-        for (int i = 0; i<ptsRoute.size(); i++){
-            distance += SphericalUtil.computeDistanceBetween(ptsRoute.get(i), ptsRoute.get(i+1));
+        if (distanceText != null){
+            distanceText.setText("Distancia: " + String.format( "%.2f", SphericalUtil.computeLength(ptsRoute) ) + "(m)");
         }
+    }
+
+    private void getElevation(LatLng point){
+
     }
 
     @Override
@@ -751,6 +798,21 @@ public class MapEditorFragment extends Fragment {
 
         void onMapEditorFragmentCanceled(LatLng camPos, float camZoom);
 
-        void onMapEditorFragmentFinishResult(List<LatLng> route, List<Polygon> polygonList, LatLng camPos, Float camZoom);
+        void onMapEditorFragmentFinishResult(List<Waypoint> waypoints, List<Polygon> polygonList, LatLng camPos, Float camZoom);
+    }
+
+    //SubClase Asincrona para obtener alturas
+    private class HeightObtainer extends AsyncTask<LatLng, Void, Double>{
+
+        @Override
+        protected Double doInBackground(LatLng... params) {
+            int count = params.length;
+            for (int i = 0; i<count; i++){
+
+            }
+            return 0.0;
+        }
+
+
     }
 }

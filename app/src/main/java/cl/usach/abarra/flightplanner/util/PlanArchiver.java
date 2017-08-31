@@ -127,7 +127,7 @@ public class PlanArchiver {
     public String savePlan (String filePath){
 
         Calendar c = Calendar.getInstance();
-        String fileName = c.get(Calendar.DATE)+c.get(Calendar.MONTH)+ c.get(Calendar.YEAR)+c.get(Calendar.HOUR_OF_DAY)+ c.get(Calendar.MINUTE)+".fplan";
+        String fileName = String.format("%1$td%1$tm%1$tY %1$tH%1$tM%1$tL", c)+".fplan";
         File fileDirectory = new File(filePath);
         String fileBody = "fplan_file;"+ this.route.size()+";"+this.polygons.size()+";\n";
         //escribo waypoints

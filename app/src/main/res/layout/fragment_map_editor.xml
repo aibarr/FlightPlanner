@@ -17,7 +17,8 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:id="@+id/linearLayout2">
 
             <Button
                 android:id="@+id/create_polygon"
@@ -37,6 +38,32 @@
                 android:layout_weight="0.67"
                 android:text="Line" />
 
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_below="@+id/linearLayout2"
+            android:layout_margin="1dp"
+            android:layout_marginBottom="1dp"
+            android:layout_marginEnd="1dp"
+            android:layout_marginLeft="1dp"
+            android:orientation="horizontal"
+            android:padding="1dp">
+
+            <TextView
+                android:id="@+id/distance_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_below="@+id/linearLayout2"
+                android:layout_marginLeft="10dp"
+                android:layout_weight="1"
+                android:text="Distancia : 0.0(m)"
+                android:textAlignment="viewStart"
+                android:textColor="@color/common_google_signin_btn_text_dark_default"
+                android:textSize="18sp" />
         </LinearLayout>
 
         <LinearLayout

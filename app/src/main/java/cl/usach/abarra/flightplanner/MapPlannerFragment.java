@@ -6,6 +6,7 @@ import android.graphics.Bitmap;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Parcelable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -21,6 +22,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.TextView;
 
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -40,6 +42,7 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import java.util.ArrayList;
 import java.util.List;
 
+import cl.usach.abarra.flightplanner.model.Waypoint;
 import cl.usach.abarra.flightplanner.util.MarkerGenerator;
 
 
@@ -57,9 +60,7 @@ public class MapPlannerFragment extends Fragment {
     private List<LatLng> ptsRoute;
     private List<Polygon> polygonList;
 
-    //Datos para enviar/recibir
-    private ArrayList<Double> latitudes;
-    private ArrayList<Double> longitudes;
+    private List<Waypoint> waypoints;
 
     private MarkerGenerator markerGenerator;
     private int permissionCheck;
@@ -79,6 +80,9 @@ public class MapPlannerFragment extends Fragment {
     private LocationListener locationListener;
 
     private LatLng lastLocation;
+
+    private TextView distanceText;
+    private TextView lastLocationText;
 
     //Constructor
     public MapPlannerFragment() {
@@ -100,7 +104,7 @@ public class MapPlannerFragment extends Fragment {
 
         markerGenerator = new MarkerGenerator();
 
-
+        //Chequeamos el permiso de la aplicación al GPS
         permissionCheck = ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION);
         if (permissionCheck != PackageManager.PERMISSION_GRANTED){
             ActivityCompat.requestPermissions(getActivity(), new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_REQUEST);
@@ -111,11 +115,17 @@ public class MapPlannerFragment extends Fragment {
                 @Override
                 public void onLocationChanged(Location location) {
                     lastLocation = new LatLng(location.getLatitude(),location.getLongitude());
-
+                    if (lastLocationText != null){
+                        lastLocationText.setText("Loc:" + lastLocation.longitude +" "+ lastLocation.latitude );
+                    }
+                    if (googleMap!=null){
+                        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(lastLocation,zoom));
+                    }
                 }
 
                 @Override
                 public void onStatusChanged(String provider, int status, Bundle extras) {
+
 
                 }
 
@@ -137,11 +147,12 @@ public class MapPlannerFragment extends Fragment {
             Bundle bundle = new Bundle(savedInstanceState);
             zoom = bundle.getFloat("zoom");
             target = (LatLng) bundle.get("target");
-            latitudes = (ArrayList<Double>) bundle.getSerializable("latitudes");
-            longitudes = (ArrayList<Double>) bundle.getSerializable("longitudes");
-            for(int i= 0; i < latitudes.size(); i++){
-                ptsRoute.add(new LatLng(latitudes.get(i), longitudes.get(i)));
-            }
+            waypoints = bundle.getParcelableArrayList("waypoints");
+            if (waypoints!=null){
+                for (Waypoint waypoint: waypoints){
+                    ptsRoute.add(waypoint.getPosition());
+                }                
+            }            
         }else {
             if(lastLocation != null){
                 target = lastLocation;
@@ -170,18 +181,17 @@ public class MapPlannerFragment extends Fragment {
         switch (item.getItemId()){
             case R.id.start_editor:
                 Intent intent = new Intent(getActivity(), MapEditorActivity.class);
-                intent.putExtra("camPos", target);
-                intent.putExtra("camZoom", zoom);
+                intent.putExtra("target", target);
+                intent.putExtra("zoom", zoom);
                 startActivityForResult(intent, NEW_PLAN);
                 break;
             case R.id.edit_plan:
                 Intent editIntent = new Intent(getActivity(), MapEditorActivity.class);
-                if (ptsRoute!= null && !(ptsRoute.isEmpty())){
-                    editIntent.putExtra("latitudes", latitudes);
-                    editIntent.putExtra("longitudes", longitudes);
+                if (waypoints!=null){
+                    editIntent.putParcelableArrayListExtra("waypoints", (ArrayList<? extends Parcelable>) waypoints);
                 }
-                editIntent.putExtra("camPos", target);
-                editIntent.putExtra("camZoom", zoom);
+                editIntent.putExtra("target", target);
+                editIntent.putExtra("zoom", zoom);
                 startActivityForResult(editIntent, EDIT_PLAN);
                 break;
             case R.id.load_plan:
@@ -197,6 +207,10 @@ public class MapPlannerFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_map_planner, container, false);
+
+        //Instanciamos los textos
+        distanceText = (TextView) rootView.findViewById(R.id.distance_shower);
+        lastLocationText = (TextView) rootView.findViewById(R.id.last_location);
 
         //Instanciamos la vista del mapa
         mapPlannerView = (MapView) rootView.findViewById(R.id.mapPlannerView);
@@ -258,15 +272,8 @@ public class MapPlannerFragment extends Fragment {
             outState.putFloat("zoom", googleMap.getCameraPosition().zoom);
         }
 
-        if (ptsRoute != null){
-            latitudes = new ArrayList<Double>();
-            longitudes = new ArrayList<Double>();
-            for (LatLng point : ptsRoute){
-                latitudes.add(point.latitude);
-                longitudes.add(point.longitude);
-            }
-            outState.putSerializable("latitudes", latitudes);
-            outState.putSerializable("longitudes", longitudes);
+        if (waypoints!=null){
+            outState.putParcelableArrayList("waypoints", (ArrayList<? extends Parcelable>) waypoints);
         }
     }
 
@@ -300,6 +307,7 @@ public class MapPlannerFragment extends Fragment {
         mapPlannerView.onStop();
     }
 
+
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -310,46 +318,47 @@ public class MapPlannerFragment extends Fragment {
             int markCount = 0;
             switch (requestCode){
                 case NEW_PLAN:
-                    latitudes = (ArrayList<Double>) data.getSerializableExtra("latitudes");
-                    longitudes = (ArrayList<Double>) data.getSerializableExtra("longitudes");
-                    System.out.println(latitudes.toString());
-                    target = (LatLng) bundle.get("camPos");
-                    zoom = bundle.getFloat("camZoom");
+                    
+                    waypoints = bundle.getParcelableArrayList("waypoints");                    
+                    target = (LatLng) bundle.get("target");
+                    zoom = bundle.getFloat("zoom");
                     googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(target,zoom));
                     optRuta = new PolylineOptions();
                     ptsRoute = new ArrayList<LatLng>();
-
-                    for (int i=0; i < latitudes.size(); i++ ){
-                        markCount++;
-                        LatLng punto = new LatLng(latitudes.get(i), longitudes.get(i) );
+                    
+                    for (Waypoint waypoint: waypoints){
+                        markCount++;                        
                         Bitmap bitmap = markerGenerator.makeBitmap(getContext(), String.valueOf(markCount));
-                        googleMap.addMarker(new MarkerOptions().position(punto).icon(BitmapDescriptorFactory.fromBitmap(bitmap)));
-                        ptsRoute.add(punto);
+                        googleMap.addMarker(new MarkerOptions().position(waypoint.getPosition()).icon(BitmapDescriptorFactory.fromBitmap(bitmap)));
+                        ptsRoute.add(waypoint.getPosition());
+                        
                     }
+                    
                     ruta = googleMap.addPolyline(optRuta);
                     ruta.setPoints(ptsRoute);
                     break;
+                
                 case EDIT_PLAN:
                     googleMap.clear();
-                    latitudes = (ArrayList<Double>) data.getSerializableExtra("latitudes");
-                    longitudes = (ArrayList<Double>) data.getSerializableExtra("longitudes");
-                    System.out.println(latitudes.toString());
-                    target = (LatLng) bundle.get("camPos");
-                    zoom = bundle.getFloat("camZoom");
+                    waypoints = bundle.getParcelableArrayList("waypoints");
+                    target = (LatLng) bundle.get("target");
+                    zoom = bundle.getFloat("zoom");
                     googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(target,zoom));
                     optRuta = new PolylineOptions();
                     ptsRoute = new ArrayList<LatLng>();
 
-                    for (int i=0; i < latitudes.size(); i++ ){
+                    for (Waypoint waypoint: waypoints){
                         markCount++;
-                        LatLng punto = new LatLng(latitudes.get(i), longitudes.get(i) );
                         Bitmap bitmap = markerGenerator.makeBitmap(getContext(), String.valueOf(markCount));
-                        googleMap.addMarker(new MarkerOptions().position(punto).icon(BitmapDescriptorFactory.fromBitmap(bitmap)));
-                        ptsRoute.add(punto);
+                        googleMap.addMarker(new MarkerOptions().position(waypoint.getPosition()).icon(BitmapDescriptorFactory.fromBitmap(bitmap)));
+                        ptsRoute.add(waypoint.getPosition());
+
                     }
+                    
                     ruta = googleMap.addPolyline(optRuta);
                     ruta.setPoints(ptsRoute);
                     break;
+                
                 case LOAD_PLAN:
                     break;
             }
@@ -360,8 +369,8 @@ public class MapPlannerFragment extends Fragment {
                 bundle = data.getExtras();
                 switch (requestCode){
                     case NEW_PLAN:
-                        target = (LatLng) bundle.get("camPos");
-                        zoom = bundle.getFloat("camZoom");
+                        target = (LatLng) bundle.get("target");
+                        zoom = bundle.getFloat("zoom");
                         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(target,zoom));
                         break;
                     case EDIT_PLAN:
