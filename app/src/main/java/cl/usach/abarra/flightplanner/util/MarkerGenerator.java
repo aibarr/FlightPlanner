@@ -34,7 +34,7 @@ public class MarkerGenerator {
         Canvas canvas = new Canvas(bitmap);
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setColor(Color.WHITE); // Text color
-        paint.setTextSize(14 * scale); // Text size
+        paint.setTextSize(12 * scale); // Text size
         paint.setShadowLayer(1f, 0f, 1f, Color.GRAY); // Text shadow
         Rect bounds = new Rect();
         paint.getTextBounds(text, 0, text.length(), bounds);

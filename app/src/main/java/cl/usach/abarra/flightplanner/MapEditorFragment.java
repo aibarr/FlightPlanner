@@ -35,6 +35,12 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
@@ -51,9 +57,17 @@ import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.maps.android.SphericalUtil;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -105,6 +119,8 @@ public class MapEditorFragment extends Fragment {
     private LocationListener locationListener;
 
     private static final int LOCATION_REQUEST = 0;
+
+    private static final String API_KEY = "AIzaSyBITRYAdWiqqRk_lj_JeVFDDKG2degBZyE";
 
     private LatLng lastLocation;
 
@@ -276,7 +292,7 @@ public class MapEditorFragment extends Fragment {
                 permissionCheck = ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE);
                 if (permissionCheck == PackageManager.PERMISSION_GRANTED){
                     if (ptsRoute!=null && ptsRoute.size()>0){
-                        PlanArchiver planArchiver = new PlanArchiver(ptsRoute, heights, speeds, polygons );
+                        PlanArchiver planArchiver = new PlanArchiver(waypoints, polygons );
                         String texToast;
                         if ((texToast = planArchiver.savePlan(Environment.getExternalStorageDirectory().getPath()+"/FlightPlanner/"))!=null){
                             String textToast = "Se ha creado el archivo "+ texToast;
@@ -362,11 +378,8 @@ public class MapEditorFragment extends Fragment {
                 mapSettings.setRotateGesturesEnabled(false);
                 mapSettings.setTiltGesturesEnabled(false);
                 if (target != null){
-                    System.out.println("Target play: "+target);
                     map.moveCamera(CameraUpdateFactory.newLatLngZoom(target, zoom));
-                    System.out.println("Target actual "+map.getCameraPosition().toString());
                 }
-                System.out.println("Pts Play: "+ptsRoute.toString());
                 route = map.addPolyline(optRoute);
                 if (!ptsRoute.isEmpty()){
                     if (undo.getVisibility()==Button.INVISIBLE) {
@@ -432,6 +445,7 @@ public class MapEditorFragment extends Fragment {
                             setUndoButton();
                         }
                         calculateDistance();
+                        getElevation(waypoint);
                     }
                 });
             }
@@ -705,6 +719,7 @@ public class MapEditorFragment extends Fragment {
                         markers.get(index).remove();
                         markers.remove(index);
                         ptsRoute.remove(index);
+                        waypoints.remove(index);
                         route.setPoints(ptsRoute);
                         break;
                     case POLYGON:
@@ -719,8 +734,11 @@ public class MapEditorFragment extends Fragment {
     }
 
     private boolean loadPlan(PlanArchiver planLoader){
-        ptsRoute = new ArrayList<LatLng>(planLoader.getRoute());
+        waypoints = new ArrayList<Waypoint>(planLoader.getWaypoints());
         route = map.addPolyline(optRoute);
+        for (Waypoint waypoint: waypoints){
+            ptsRoute.add(waypoint.getPosition());
+        }
         route.setPoints(ptsRoute);
         int markCount = 0;
         for (LatLng point : ptsRoute){
@@ -779,7 +797,49 @@ public class MapEditorFragment extends Fragment {
         }
     }
 
-    private void getElevation(LatLng point){
+    private void getElevation(Waypoint waypoint){
+
+        String url = "https://maps.googleapis.com/maps/api/elevation/json?locations="+ waypoint.getPosition().latitude+","+waypoint.getPosition().longitude+"&key="+API_KEY;
+
+        RequestQueue queue = Volley.newRequestQueue(getContext());
+        JsonObjectRequest jsObjRequest = new JsonObjectRequest
+                (Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
+
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        Toast toast;
+                        try {
+                            String status = response.getString("status");
+                            switch (status){
+                                case "OK":
+                                    JSONArray results = response.getJSONArray("results");
+                                    JSONObject result = results.getJSONObject(0);
+                                    Double elevation = result.getDouble("elevation");
+                                    toast = Toast.makeText(getContext(), elevation.toString(), Toast.LENGTH_LONG );
+                                    toast.show();
+                                    break;
+                                case "REQUEST_DENIED":
+                                    toast = Toast.makeText(getContext(), "Solicitud Denegada", Toast.LENGTH_LONG );
+                                    toast.show();
+                                    break;
+
+                            }
+
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+
+                    }
+                }, new Response.ErrorListener() {
+
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        // TODO Auto-generated method stub
+
+                    }
+                });
+        queue.add(jsObjRequest);
+
 
     }
 
@@ -801,18 +861,5 @@ public class MapEditorFragment extends Fragment {
         void onMapEditorFragmentFinishResult(List<Waypoint> waypoints, List<Polygon> polygonList, LatLng camPos, Float camZoom);
     }
 
-    //SubClase Asincrona para obtener alturas
-    private class HeightObtainer extends AsyncTask<LatLng, Void, Double>{
 
-        @Override
-        protected Double doInBackground(LatLng... params) {
-            int count = params.length;
-            for (int i = 0; i<count; i++){
-
-            }
-            return 0.0;
-        }
-
-
-    }
 }

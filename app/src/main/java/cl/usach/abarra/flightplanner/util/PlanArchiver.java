@@ -24,48 +24,46 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+import cl.usach.abarra.flightplanner.model.Waypoint;
+
 /**
  * Created by Alfredo Barra on 26-05-2017. Pre-grade project.
  */
 
 public class PlanArchiver {
 
-    private List<LatLng> route;
-    private Float[] heights;
-    private Float[] speeds;
+    private List<Waypoint> waypoints;
     private ArrayList<ArrayList<LatLng>> polygons;
 
-    public PlanArchiver(List<LatLng> route, Float[] heights, Float[] speeds, ArrayList<ArrayList<LatLng>> polygons) {
-        this.route = route;
-        this.heights = heights;
-        this.speeds = speeds;
+    public PlanArchiver() {
+
+    }
+
+    public PlanArchiver(List<Waypoint> waypoints, ArrayList<ArrayList<LatLng>> polygons) {
+        this.waypoints = waypoints;
         this.polygons = polygons;
     }
 
-    public List<LatLng> getRoute() {
-        return route;
+    public List<Waypoint> getWaypoints() {
+        return waypoints;
     }
 
-    public Float[] getHeights() {
-        return heights;
-    }
-
-    public Float[] getSpeeds() {
-        return speeds;
+    public void setWaypoints(List<Waypoint> waypoints) {
+        this.waypoints = waypoints;
     }
 
     public ArrayList<ArrayList<LatLng>> getPolygons() {
         return polygons;
     }
 
-    public PlanArchiver() {
-
+    public void setPolygons(ArrayList<ArrayList<LatLng>> polygons) {
+        this.polygons = polygons;
     }
 
     public boolean loadPlan (String filePath){
         File file= new File(filePath);
         File fileDirectory = new File(file.getAbsolutePath());
-        this.route = new ArrayList<LatLng>();
+        this.waypoints = new ArrayList<Waypoint>();
         this.polygons = new ArrayList<ArrayList<LatLng>>();
         if (!fileDirectory.exists()){
             System.out.println("Directorio no existe o no fue encontrado");
@@ -91,7 +89,12 @@ public class PlanArchiver {
                     for (i = 0; i< points; i++){
                         line = bufferedReader.readLine();
                         parsedLine = line.split("\t");
-                        this.route.add(new LatLng(Double.parseDouble(parsedLine[0]),Double.parseDouble(parsedLine[1])));
+                        Waypoint waypoint = new Waypoint();
+                        waypoint.setPosition(new LatLng(Double.parseDouble(parsedLine[0]),Double.parseDouble(parsedLine[1])));
+                        waypoint.setHeight(0.0);
+                        waypoint.setSpeed(0);
+                        waypoint.setType('s');
+                        waypoints.add(waypoint);
                     }
                     for (i=points; i<polygons+points;i++){
                         ArrayList<LatLng> vertices = new ArrayList<LatLng>();
@@ -129,10 +132,10 @@ public class PlanArchiver {
         Calendar c = Calendar.getInstance();
         String fileName = String.format("%1$td%1$tm%1$tY %1$tH%1$tM%1$tL", c)+".fplan";
         File fileDirectory = new File(filePath);
-        String fileBody = "fplan_file;"+ this.route.size()+";"+this.polygons.size()+";\n";
+        String fileBody = "fplan_file;"+ this.waypoints.size()+";"+this.polygons.size()+";\n";
         //escribo waypoints
-        for (LatLng point: this.route){
-            fileBody = fileBody + point.latitude + "\t"+ point.longitude + "\tspeed\theight\tstyle\n";
+        for (Waypoint waypoint: this.waypoints){
+            fileBody = fileBody + waypoint.getPosition().latitude + "\t"+ waypoint.getPosition().longitude + "\t"+ waypoint.getHeight()+"\t"+waypoint.getSpeed()+ "\t"+waypoint.getType() +"\n";
         }
         if (!fileDirectory.exists()){
             fileDirectory.mkdirs();
