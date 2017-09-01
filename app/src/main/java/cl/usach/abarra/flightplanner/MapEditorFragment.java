@@ -158,6 +158,7 @@ public class MapEditorFragment extends Fragment {
     private EditText etLatitude;
     private EditText etLongitude;
     private EditText etSpeed;
+    private EditText etHeight;
 
     public MapEditorFragment() {
         // Required empty public constructor
@@ -200,6 +201,7 @@ public class MapEditorFragment extends Fragment {
         etLatitude = (EditText) getActivity().findViewById(R.id.et_latitud);
         etLongitude = (EditText) getActivity().findViewById(R.id.et_longitud);
         etSpeed = (EditText) getActivity().findViewById(R.id.et_speed);
+        etHeight = (EditText) getActivity().findViewById(R.id.et_height);
         bEraseMarker = (Button) getActivity().findViewById(R.id.bs_erase_marker);
         bApplyChanges = (Button) getActivity().findViewById(R.id.bs_apply_marker);
 
@@ -753,8 +755,12 @@ public class MapEditorFragment extends Fragment {
     //Funciones para la edicion de marcadores
     private void editMarker(final Marker marker){
         LatLng position = marker.getPosition();
+        int index = ptsRoute.indexOf(position);
+        Waypoint waypoint = waypoints.get(index);
         etLatitude.setText(Double.toString(position.latitude), TextView.BufferType.EDITABLE);
         etLongitude.setText(Double.toString(position.longitude), TextView.BufferType.EDITABLE);
+        etSpeed.setText(Integer.toString(waypoint.getSpeed()), TextView.BufferType.EDITABLE);
+        etHeight.setText(Double.toString(waypoint.getHeight()), TextView.BufferType.EDITABLE);
         bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
         bEraseMarker.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -765,12 +771,16 @@ public class MapEditorFragment extends Fragment {
         bApplyChanges.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                moveMarker(marker, Double.parseDouble(etLatitude.getText().toString()), Double.parseDouble(etLongitude.getText().toString()) );
+                Waypoint waypoint = new Waypoint();
+                waypoint.setPosition(new LatLng(Double.parseDouble(String.valueOf(etLatitude.getText())), Double.parseDouble(String.valueOf(etLongitude.getText()))));
+                waypoint.setHeight(Double.parseDouble(String.valueOf(etHeight.getText())));
+                waypoint.setSpeed(Integer.parseInt(String.valueOf(etSpeed.getText())));
+                moveMarker(marker, waypoint);
             }
         });
     }
 
-    public void killMarker(Marker marker){
+    private void killMarker(Marker marker){
         LatLng position = marker.getPosition();
         markers.remove(marker);
         marker.remove();
@@ -780,12 +790,13 @@ public class MapEditorFragment extends Fragment {
         bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
     }
 
-    public void moveMarker(Marker marker, Double latitude, Double longitude){
-        LatLng position = marker.getPosition();
-        LatLng newPosition =new LatLng(latitude, longitude);
-        marker.setPosition(newPosition );
-        ptsRoute.set(ptsRoute.indexOf(position), newPosition);
+    private void moveMarker(Marker marker, Waypoint waypoint){
+        int index = ptsRoute.indexOf(marker.getPosition());
+        ptsRoute.set(index, waypoint.getPosition());
+        marker.setPosition(waypoint.getPosition());
+        waypoints.set(index, waypoint);
         route.setPoints(ptsRoute);
+        calculateDistance();
         bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
     }
 
@@ -797,14 +808,13 @@ public class MapEditorFragment extends Fragment {
         }
     }
 
-    private void getElevation(Waypoint waypoint){
+    private final void getElevation(final Waypoint waypoint){
 
         String url = "https://maps.googleapis.com/maps/api/elevation/json?locations="+ waypoint.getPosition().latitude+","+waypoint.getPosition().longitude+"&key="+API_KEY;
 
         RequestQueue queue = Volley.newRequestQueue(getContext());
         JsonObjectRequest jsObjRequest = new JsonObjectRequest
                 (Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
-
                     @Override
                     public void onResponse(JSONObject response) {
                         Toast toast;
@@ -815,6 +825,9 @@ public class MapEditorFragment extends Fragment {
                                     JSONArray results = response.getJSONArray("results");
                                     JSONObject result = results.getJSONObject(0);
                                     Double elevation = result.getDouble("elevation");
+
+                                    waypoint.setHeight(elevation);
+
                                     toast = Toast.makeText(getContext(), elevation.toString(), Toast.LENGTH_LONG );
                                     toast.show();
                                     break;
@@ -839,8 +852,6 @@ public class MapEditorFragment extends Fragment {
                     }
                 });
         queue.add(jsObjRequest);
-
-
     }
 
     @Override
