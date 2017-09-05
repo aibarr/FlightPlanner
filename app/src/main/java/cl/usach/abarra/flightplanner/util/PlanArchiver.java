@@ -91,8 +91,8 @@ public class PlanArchiver {
                         parsedLine = line.split("\t");
                         Waypoint waypoint = new Waypoint();
                         waypoint.setPosition(new LatLng(Double.parseDouble(parsedLine[0]),Double.parseDouble(parsedLine[1])));
-                        waypoint.setHeight(0.0);
-                        waypoint.setSpeed(0);
+                        waypoint.setHeight(Double.parseDouble(parsedLine[2]));
+                        waypoint.setSpeed(Integer.valueOf(parsedLine[3]));
                         waypoint.setType('s');
                         waypoints.add(waypoint);
                     }
@@ -120,7 +120,7 @@ public class PlanArchiver {
     }
 
 
-    public boolean savePlan (List<LatLng> route, Float[] heights, Float[] speeds, ArrayList<ArrayList<LatLng>> polygons, String filePath){
+    public boolean savePlan (List<Waypoint> waypoints, ArrayList<ArrayList<LatLng>> polygons, String filePath){
         String fileName =  ".fplan";
         File writeFile = new File(filePath+fileName);
         return true;
