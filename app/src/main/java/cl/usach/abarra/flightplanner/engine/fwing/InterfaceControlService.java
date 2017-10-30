@@ -202,7 +202,7 @@ public class InterfaceControlService extends IOIOService {
                 statLed.write(true);
                 Thread.sleep(1000);
 
-                ServiceControlActivity.isInterfaceLinked = true;
+                //ServiceControlActivity.isInterfaceLinked = true;
                 icsEnabled = true;
                 Thread.currentThread().setPriority(10);
                 //TODO play a nice sound when setup is completed
@@ -228,7 +228,7 @@ public class InterfaceControlService extends IOIOService {
             @Override
             public void disconnected() {
                 super.disconnected();
-                ServiceControlActivity.isInterfaceLinked = false;
+                //ServiceControlActivity.isInterfaceLinked = false;
                 icsEnabled = false;
                 isManualMode = false;
                 stopSelf();
@@ -860,14 +860,14 @@ public class InterfaceControlService extends IOIOService {
                 isArmed = true;
                 calibrateECS();
                 enginePWMPeriod = ENGINE_MINIMUM_THROTTLE_PWM_PERIOD;
-                ArmadoActivity.uavState = "Armado";
+                //ArmadoActivity.uavState = "Armado";
                 Log.w("ICS","ADVERTENCIA: El motor está armado. ¡RETIRE SUS MANOS DEL PROPULSOR!");
             }
         }else{
                 isArmed = false;
                 enginePWMPeriod = 0;
                 Log.i("ICS", "Motor desarmado.");
-                ArmadoActivity.uavState = "Desarmado";
+                //ArmadoActivity.uavState = "Desarmado";
         }
 
 

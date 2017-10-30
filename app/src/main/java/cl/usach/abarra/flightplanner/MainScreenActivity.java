@@ -1,5 +1,6 @@
 package cl.usach.abarra.flightplanner;
 
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -16,11 +17,19 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import cl.usach.abarra.flightplanner.util.UtilityService;
+
 public class MainScreenActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener,
-MapPlannerFragment.OnMapPlannerInteractionListener{
+        MapPlannerFragment.OnMapPlannerInteractionListener {
 
     private int selectedItem;
+
+    private Intent serviceIntent;
+
+    private FloatingActionButton fab;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,12 +38,24 @@ MapPlannerFragment.OnMapPlannerInteractionListener{
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        serviceIntent = new Intent(this , UtilityService.class);
+
+        fab = (FloatingActionButton) findViewById(R.id.fab);
+
+        final boolean[] fabServiceStart = {false};
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+                if (!fabServiceStart[0]){
+                    startService(serviceIntent);
+                    fabServiceStart[0] = true;
+                } else{
+                    fabServiceStart[0] = false;
+                    stopService(serviceIntent);
+                    Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+                            .setAction("Action", null).show();
+                }
+
             }
         });
 
@@ -128,4 +149,6 @@ MapPlannerFragment.OnMapPlannerInteractionListener{
     public void onMapPlannerInteraction(Uri uri) {
 
     }
+
+
 }

@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 25
-    buildToolsVersion "25.0.2"
+    buildToolsVersion '26.0.2'
     defaultConfig {
         applicationId "cl.usach.abarra.flightplanner"
         minSdkVersion 19
@@ -34,6 +34,7 @@ dependencies {
     compile 'ir.sohreco.androidfilechooser:android-file-chooser:1.2'
     compile 'com.github.ytai.ioio:IOIOLibAndroid:5.07'
     compile 'com.google.maps.android:android-maps-utils:0.4+'
+    compile 'commons-codec:commons-codec:1.10'
     testCompile 'junit:junit:4.12'
 
 }

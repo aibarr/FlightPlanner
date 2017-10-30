@@ -4,7 +4,6 @@ import android.os.Parcelable;
 import android.support.v7.app.AppCompatActivity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.v7.widget.Toolbar;
 
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Polygon;
@@ -16,9 +15,21 @@ import cl.usach.abarra.flightplanner.model.Waypoint;
 
 public class MapEditorActivity extends AppCompatActivity implements MapEditorFragment.OnMapEditorFragmentListener{
 
+
+
     private Bundle intentData;
 
+
+
     private MapEditorFragment mapEditorFragment;
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+
+
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

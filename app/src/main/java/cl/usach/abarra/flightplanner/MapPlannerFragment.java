@@ -24,7 +24,6 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
-import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
@@ -32,10 +31,8 @@ import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
-import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
@@ -83,6 +80,7 @@ public class MapPlannerFragment extends Fragment {
 
     private TextView distanceText;
     private TextView lastLocationText;
+    private Button navTestBtn;
 
     //Constructor
     public MapPlannerFragment() {
@@ -101,6 +99,8 @@ public class MapPlannerFragment extends Fragment {
 
         super.onCreate(savedInstanceState);
         ptsRoute = new ArrayList<LatLng>();
+
+
 
         markerGenerator = new MarkerGenerator();
 
@@ -204,13 +204,30 @@ public class MapPlannerFragment extends Fragment {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+    public View onCreateView(final LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_map_planner, container, false);
 
         //Instanciamos los textos
         distanceText = (TextView) rootView.findViewById(R.id.distance_shower);
         lastLocationText = (TextView) rootView.findViewById(R.id.last_location);
+
+        navTestBtn = (Button) rootView.findViewById(R.id.navigation_test);
+
+        navTestBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (waypoints!=null && !waypoints.isEmpty()){
+
+                    Intent intent = new Intent(getContext(), NavigationActivity.class);
+                    intent.putParcelableArrayListExtra("waypoints", (ArrayList<? extends Parcelable>) waypoints);
+                    if(lastLocation!=null){
+                        intent.putExtra("lastLoc", lastLocation);
+                    }
+                    startActivity(intent);
+                }
+            }
+        });
 
         //Instanciamos la vista del mapa
         mapPlannerView = (MapView) rootView.findViewById(R.id.mapPlannerView);
