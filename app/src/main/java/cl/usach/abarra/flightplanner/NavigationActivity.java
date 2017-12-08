@@ -12,6 +12,7 @@ import android.os.Parcelable;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.widget.TextView;
+import android.widget.ThemedSpinnerAdapter;
 
 import com.google.android.gms.maps.model.LatLng;
 
@@ -31,7 +32,7 @@ public class NavigationActivity extends AppCompatActivity {
     private TextView actualPosView;
     private TextView gapView;
 
-    private Thread statusChecker;
+
 
     NavigationService navigationService;
     boolean mBound = false;
@@ -43,25 +44,7 @@ public class NavigationActivity extends AppCompatActivity {
             NavigationService.NavigationBinder navigationBinder = (NavigationService.NavigationBinder) service;
             navigationService = navigationBinder.getService();
             mBound = true;
-            System.out.println("Estoy acá");
-
-            statusChecker = new Thread(){
-                @Override
-                public void run() {
-                    super.run();
-                    while (mBound){
-                        actualPosView.setText(navigationService.getActualPosition().toString());
-                        goalView.setText(navigationService.getGoal().toString());
-                        gapView.setText(String.valueOf(navigationService.getDistance()));
-                        System.out.println("Cambiando vista");
-                        try {
-                            Thread.sleep(5000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            };
+            runThread();
         }
 
         @Override
@@ -117,5 +100,9 @@ public class NavigationActivity extends AppCompatActivity {
             unbindService(mConnection);
             mBound = false;
         }
+    }
+
+    public void runThread(){
+
     }
 }

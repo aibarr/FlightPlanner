@@ -74,6 +74,7 @@ import java.util.Map;
 import java.util.Stack;
 
 
+import cl.usach.abarra.flightplanner.util.GridPolygon;
 import cl.usach.abarra.flightplanner.util.MarkerGenerator;
 import cl.usach.abarra.flightplanner.util.PlanArchiver;
 import cl.usach.abarra.flightplanner.model.Waypoint;
@@ -473,6 +474,7 @@ public class MapEditorFragment extends Fragment {
 
                 map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
                     PolygonOptions tempPolygonOptions = new PolygonOptions();
+
                     Polygon tempPolygon;
 
                     @Override
@@ -484,7 +486,7 @@ public class MapEditorFragment extends Fragment {
                         vertices.add(latLng);
                         if (vertices.size()>2){
                             if(tempPolygon==null){
-                                tempPolygon = map.addPolygon(tempPolygonOptions.addAll(vertices));
+                                tempPolygon = map.addPolygon(tempPolygonOptions.addAll(vertices).strokeColor(0xff385aaf));
                                 if (!polygonList.isEmpty()){
                                     polygonList.remove(polygonList.size()-1);
                                 }
@@ -525,11 +527,21 @@ public class MapEditorFragment extends Fragment {
                                 builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener(){
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
-                                        buttonFlag  =  0;
-                                        ptsRoute.addAll(vertices);
+
                                         map.setOnMapClickListener(null);
                                         statusBar.setText("");
                                         finishButton.setVisibility(View.GONE);
+                                        buttonFlag  =  0;
+                                        Thread addPoly = new Thread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                System.out.println("creando Poligono Grilla");
+                                                GridPolygon gridPolygon = new GridPolygon(vertices);
+                                                gridPolygon.calculateGrid(1.414);
+                                                ptsRoute.addAll(gridPolygon.getGrid());
+                                            }
+                                        });
+                                        addPoly.start();
                                     }
                                 })
                                 .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
@@ -545,12 +557,28 @@ public class MapEditorFragment extends Fragment {
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
                                         buttonFlag  =  0;
-                                        ptsRoute.addAll(vertices);
                                         polygons.add(vertices);
-                                        route.setPoints(ptsRoute);
                                         map.setOnMapClickListener(null);
                                         statusBar.setText("");
+                                        System.out.println("Entrado a Tarea");
+                                        GridPolygon gridPolygon = new GridPolygon(vertices);
+                                        System.out.println("creando Poligono Grilla");
+                                        gridPolygon.calculateGrid(1.414);
+                                        System.out.println(gridPolygon.getCenter().toString());
+                                        map.addMarker(new MarkerOptions().position(gridPolygon.getCenter()));
+                                        ptsRoute.addAll(gridPolygon.getGrid());
+                                        System.out.println(gridPolygon.getGrid().toString());
+                                        route.setPoints(ptsRoute);
+                                        /*final Thread addPoly = new Thread(new Runnable() {
+                                            @Override
+                                            public void run() {
+
+                                            }
+                                        });
+                                        addPoly.start();*/
+
                                         finishButton.setVisibility(View.GONE);
+
                                     }
                                 })
                                 .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
