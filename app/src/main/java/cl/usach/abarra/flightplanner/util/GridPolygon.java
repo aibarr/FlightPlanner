@@ -167,8 +167,8 @@ public class GridPolygon {
         System.out.printf("Segunda Mitad");
         while (tempXizq < x2){
 
-            tempXizq = (tempYizq - B) / m;
             if (tempYizq < y1) tempYizq = y1;
+            tempXizq = (tempYizq - B) / m;
 
             //genero el punto izquierdo
             ptsIzq.add(new LatLng(tempYizq, tempXizq));

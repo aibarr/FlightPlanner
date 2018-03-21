@@ -480,6 +480,8 @@ public class MapEditorFragment extends Fragment {
                     @Override
                     public void onMapClick(LatLng latLng) {
 
+                        System.out.println("toque en "+latLng.toString()+"equivalente a X en "+latLng.latitude+"e Y en "+ latLng.longitude);
+
                         Marker marker = map.addMarker(new MarkerOptions().position(latLng));
                         markers.add(marker);
                         undoStack.push(POLYGON_POINT);
@@ -537,7 +539,7 @@ public class MapEditorFragment extends Fragment {
                                             public void run() {
                                                 System.out.println("creando Poligono Grilla");
                                                 GridPolygon gridPolygon = new GridPolygon(vertices);
-                                                gridPolygon.calculateGrid(1.414);
+                                                gridPolygon.calculateGrid(0.785398);
                                                 ptsRoute.addAll(gridPolygon.getGrid());
                                             }
                                         });
@@ -566,6 +568,7 @@ public class MapEditorFragment extends Fragment {
                                         gridPolygon.calculateGrid(1.414);
                                         System.out.println(gridPolygon.getCenter().toString());
                                         map.addMarker(new MarkerOptions().position(gridPolygon.getCenter()));
+                                        System.out.println(gridPolygon.getGrid().toString());
                                         ptsRoute.addAll(gridPolygon.getGrid());
                                         System.out.println(gridPolygon.getGrid().toString());
                                         route.setPoints(ptsRoute);
