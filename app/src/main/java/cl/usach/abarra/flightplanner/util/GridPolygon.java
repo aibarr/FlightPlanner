@@ -4,6 +4,8 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -37,6 +39,7 @@ public class GridPolygon {
     }
 
     public LatLng getCenter() {
+        if (this.center == null) this.calculateCenter();
         return center;
     }
 
@@ -44,9 +47,11 @@ public class GridPolygon {
         this.area= 0.0;
         LatLng[] vertices = this.vertices.toArray(new LatLng[this.vertices.size()]);
 
-        for ( int i = 0; i < vertices.length - 1; i++) {
-            this.area = this.area + 0.5 * (vertices[i].latitude * vertices[i+1].longitude - vertices[i+1].latitude * vertices[i].longitude);
+        for ( int i = 0; i < vertices.length-1; i++) {
+            this.area = this.area + ( (vertices[i].longitude * vertices[i+1].latitude)-( vertices[i+1].longitude * vertices[i].latitude)); //(xi * yi+1) - (xi+1 * yi)
         }
+
+        this.area = 0.5 * this.area;
     }
 
     private void calculateCenter(){
@@ -60,11 +65,13 @@ public class GridPolygon {
         Double Cy = 0.0;
 
         for (int i = 0; i < vertices.length - 1; i++ ){
-            Double Comm = (vertices[i].latitude * vertices[i+1].longitude - vertices[i+1].latitude*vertices[i].longitude);
-            Cx = Cx + (1/(6*this.area))*((vertices[i].latitude + vertices[i+1].latitude) * Comm);
-            Cy = Cy + (1/(6*this.area))*((vertices[i].longitude + vertices[i+1].longitude) * Comm);
+            Cx = Cx + ((vertices[i].longitude + vertices[i+1].longitude) * ((vertices[i].longitude * vertices[i+1].latitude) - (vertices[i+1].longitude * vertices[i].latitude)));
+            Cy = Cy + ((vertices[i].latitude + vertices[i+1].latitude) * ((vertices[i].longitude * vertices[i+1].latitude) - (vertices[i+1].longitude * vertices[i].latitude)));
         }
-        this.center = new LatLng(Cx, Cy);
+        double aux = (1/(6*this.area));
+        Cx = aux * Cx;
+        Cy = aux * Cy;
+        this.center = new LatLng(Cy, Cx);
     }
 
     public void calculateGrid(Double orientation){
@@ -73,9 +80,12 @@ public class GridPolygon {
         if (this.center == null) this.center = getPolygonCenterPoint((ArrayList<LatLng>) this.vertices);
 
         //Ecuación de la recta
-        Double m = orientation;  //deg or rad?
+        //TODO: Calcular pendiente según orientacion
+        Double m = 1.0;  //deg or rad?
 
-        Double x0 = this.center.latitude;
+        System.out.println("M= " + m);
+
+        Double x0 = this.center.longitude;
 
         List<LatLng> ptsIzq = new ArrayList<LatLng>();
         List<LatLng> ptsDer = new ArrayList<LatLng>();
@@ -84,71 +94,101 @@ public class GridPolygon {
 
         Double x1, x2, y1, y2;
 
-        y1 = -90.0;
-        x1 = -180.0;
-        y2 = 90.0;
-        x2 = 180.0;
+
+        List<Double> Xs = new ArrayList<Double>();
+        List<Double> Ys = new ArrayList<Double>();
 
         //encajonemos el poligono
         for (LatLng vertice : this.vertices){
-            if (y1 < vertice.latitude) y1 = vertice.latitude;
-            if (x1 < vertice.longitude) x1 = vertice.longitude;
-
-            if (y2 > vertice.latitude) y2 = vertice.latitude;
-            if (x2 > vertice.longitude) x2 = vertice.longitude;
+            Xs.add(vertice.longitude);
+            Ys.add(vertice.latitude);
         }
+
+        x1 = Collections.min(Xs);
+        x2 = Collections.max(Xs);
+        y1 = Collections.min(Ys);
+        y2 = Collections.max(Ys);
+
+
+
+        System.out.println("La caja es:\nX1:"+ x1 +" Y1:" + y1+ "\nX2:" + x2+ " Y2:" + y2);
 
         //calcular la separación en Y
 
-        Double parallelGap = 0.1;//Cambiar por setting por defecto
+        Double parallelGap = 1.0;//Cambiar por setting por defecto
 
         Double cscOrientation = csc(orientation);
 
-        System.out.println(cscOrientation);
 
         Double yGap = cscOrientation * parallelGap;
+        System.out.println("GAP is:"+yGap);
 
         if (yGap < 0) yGap = yGap * (-1);
 
-        Double B = y2 - m * x1;
 
+        System.out.println("La separación es: "+ yGap);
 
 
         Double tempXder, tempYder, tempXizq, tempYizq;
 
-        tempXder = x1;
+        tempXizq = x1;
+        tempYizq = y2 - yGap;
+        Double B = tempYizq - m * tempXizq;
         tempYder = y2;
 
+        System.out.println("B: "+B);
+        System.out.println("tyi= " + tempYizq + " y1= " + y1);
+
+        System.out.println("primera mitad");
+
         //Calcular cada recta desde una punta del cuadrilatero
-        while(tempYder > y1){
-            System.out.println("primera mitad");
+        while (y1.compareTo(tempYizq)<0){
 
-            tempYder = tempXder * m + B;
-            if(tempYder < y1) tempYder = y1;
-            ptsDer.add(new LatLng(tempYder,tempXder));
+            //Genero el punto
+            ptsIzq.add(new LatLng(tempYizq, tempXizq));
 
-            tempXizq = (y2 - B) / m;
-            if (tempXizq > x2) tempXizq = x2;
-            ptsIzq.add(new LatLng(y2, tempXizq));
+            //calculamos X derecho
+            tempXder = (tempYder - B) / m;
+            if (tempXder >= x2) {
+                tempXder = x2;
+                tempYder = tempYder - yGap;
+            }
 
+            //añado puntos a la derecha
+            ptsDer.add(new LatLng(tempYder, tempXder));
+
+            //Calculo la ecuacion nueva
             B = B - yGap;
+            tempYizq = tempYizq - yGap;
+            System.out.println("B1: "+ B + " X1: " + tempXizq +" Y1: " + tempYizq);
+
         }
 
+        System.out.printf("Segunda Mitad");
+        while (tempXizq < x2){
 
+            tempXizq = (tempYizq - B) / m;
+            if (tempYizq < y1) tempYizq = y1;
 
-       /* while(tempXder < x2){
-            System.out.println("segunda mitad");
-            tempXder = (y1 - B)/m;
-            if (tempXder < x1) tempXder = x1;
-            ptsDer.add(new LatLng(tempXder, tempYder));
+            //genero el punto izquierdo
+            ptsIzq.add(new LatLng(tempYizq, tempXizq));
 
-            tempXizq = x2;
-            tempYizq = (m*x2 + B);
-            if (tempYizq > y2) tempXizq = y2;
-            ptsIzq.add(new LatLng(tempXizq,tempYizq));
+            //calculo el punto derecho
 
-            B -= yGap;
-        }*/
+            tempXder = (tempYder - B) / m;
+            if (tempXder >= x2) {
+                tempXder = x2;
+                tempYder -= yGap;
+            }
+
+            ptsDer.add(new LatLng(tempYder, tempXder));
+
+            System.out.println("B2: "+ B + " X2: " + tempXizq +" Y2: " + tempYizq);
+
+            B = B - yGap;
+
+        }
+
 
 
         //TODO: recortar grilla
