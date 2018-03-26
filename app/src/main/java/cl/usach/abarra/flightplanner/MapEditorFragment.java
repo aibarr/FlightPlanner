@@ -196,7 +196,6 @@ public class MapEditorFragment extends Fragment {
         //Abrimos un generador de marcadores
         markerGenerator = new MarkerGenerator();
 
-
         //Variables para el Bottom Sheet
         bottomSheet = (LinearLayout) getActivity().findViewById(R.id.bs_bottom_sheet);
         etLatitude = (EditText) getActivity().findViewById(R.id.et_latitud);
@@ -456,6 +455,8 @@ public class MapEditorFragment extends Fragment {
 
         //Flag para Poligono "2"
         final Button finishButton = (Button) rootView.findViewById(R.id.finish_Button);
+        final EditText orientationInput = (EditText) rootView.findViewById(R.id.orienation_input);
+        orientationInput.setText("45");
         createPolygon = (Button) rootView.findViewById(R.id.create_polygon);
         createPolygon.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -505,6 +506,9 @@ public class MapEditorFragment extends Fragment {
 
                     }
                 });
+
+                
+
 
                 finishButton.setVisibility(Button.VISIBLE);
                 finishButton.setOnClickListener(new View.OnClickListener() {
@@ -659,7 +663,6 @@ public class MapEditorFragment extends Fragment {
         }
     }
 
-
     @Override
     public void onSaveInstanceState(Bundle outState) {
 
@@ -673,8 +676,6 @@ public class MapEditorFragment extends Fragment {
         mapEditorView.onSaveInstanceState(outState);
         super.onSaveInstanceState(outState);
     }
-
-
 
     @Override
     public void onResume() {
@@ -787,28 +788,30 @@ public class MapEditorFragment extends Fragment {
     private void editMarker(final Marker marker){
         LatLng position = marker.getPosition();
         int index = ptsRoute.indexOf(position);
-        Waypoint waypoint = waypoints.get(index);
-        etLatitude.setText(Double.toString(position.latitude), TextView.BufferType.EDITABLE);
-        etLongitude.setText(Double.toString(position.longitude), TextView.BufferType.EDITABLE);
-        etSpeed.setText(Integer.toString(waypoint.getSpeed()), TextView.BufferType.EDITABLE);
-        etHeight.setText(Double.toString(waypoint.getHeight()), TextView.BufferType.EDITABLE);
-        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
-        bEraseMarker.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                killMarker(marker);
-            }
-        });
-        bApplyChanges.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Waypoint waypoint = new Waypoint();
-                waypoint.setPosition(new LatLng(Double.parseDouble(String.valueOf(etLatitude.getText())), Double.parseDouble(String.valueOf(etLongitude.getText()))));
-                waypoint.setHeight(Double.parseDouble(String.valueOf(etHeight.getText())));
-                waypoint.setSpeed(Integer.parseInt(String.valueOf(etSpeed.getText())));
-                moveMarker(marker, waypoint);
-            }
-        });
+        if (index > 0){
+            Waypoint waypoint = waypoints.get(index);
+            etLatitude.setText(Double.toString(position.latitude), TextView.BufferType.EDITABLE);
+            etLongitude.setText(Double.toString(position.longitude), TextView.BufferType.EDITABLE);
+            etSpeed.setText(Integer.toString(waypoint.getSpeed()), TextView.BufferType.EDITABLE);
+            etHeight.setText(Double.toString(waypoint.getHeight()), TextView.BufferType.EDITABLE);
+            bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+            bEraseMarker.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    killMarker(marker);
+                }
+            });
+            bApplyChanges.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Waypoint waypoint = new Waypoint();
+                    waypoint.setPosition(new LatLng(Double.parseDouble(String.valueOf(etLatitude.getText())), Double.parseDouble(String.valueOf(etLongitude.getText()))));
+                    waypoint.setHeight(Double.parseDouble(String.valueOf(etHeight.getText())));
+                    waypoint.setSpeed(Integer.parseInt(String.valueOf(etSpeed.getText())));
+                    moveMarker(marker, waypoint);
+                }
+            });
+        }
     }
 
     private void killMarker(Marker marker){
@@ -889,10 +892,6 @@ public class MapEditorFragment extends Fragment {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
-
-
-
-
 
     public interface OnMapEditorFragmentListener {
 

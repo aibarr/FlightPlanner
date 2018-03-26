@@ -67,7 +67,39 @@
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/linearLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_above="@+id/linearLayoutBot">
+
+            <Button
+                android:id="@+id/finish_Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_above="@+id/linearLayout"
+                android:layout_alignParentStart="true"
+                android:layout_weight="1"
+                android:text="Finish"
+                android:visibility="invisible" />
+
+            <EditText
+                android:id="@+id/orienation_input"
+                android:layout_width="150dp"
+                android:layout_height="match_parent"
+                android:visibility="invisible"
+                />
+
+            <Button
+                android:id="@+id/set_home"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_above="@+id/linearLayoutBot"
+                android:layout_alignParentEnd="true"
+                android:layout_weight="0.31"
+                android:text="Home" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/linearLayoutBot"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
@@ -101,24 +133,7 @@
                 android:visibility="invisible" />
         </LinearLayout>
 
-        <Button
-            android:id="@+id/finish_Button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_above="@+id/linearLayout"
-            android:layout_alignParentStart="true"
-            android:layout_weight="1"
-            android:text="Finish"
-            android:visibility="invisible" />
 
-        <Button
-            android:id="@+id/set_home"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_above="@+id/linearLayout"
-            android:layout_alignParentEnd="true"
-            android:layout_weight="0.31"
-            android:text="Home" />
 
     </RelativeLayout>
 

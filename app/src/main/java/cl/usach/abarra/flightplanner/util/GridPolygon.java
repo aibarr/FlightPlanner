@@ -75,25 +75,19 @@ public class GridPolygon {
     }
 
     public void calculateGrid(Double orientation){
-
         System.out.println("Calculando Grilla");
+
+
+
+        //TODO:Cambiar por setting por defecto
+        Double parallelGap = 0.5;
+
         if (this.center == null) this.center = getPolygonCenterPoint((ArrayList<LatLng>) this.vertices);
-
-        //Ecuación de la recta
-        //TODO: Calcular pendiente según orientacion
-        Double m = 1.0;  //deg or rad?
-
-        System.out.println("M= " + m);
 
         Double x0 = this.center.longitude;
 
-        List<LatLng> ptsIzq = new ArrayList<LatLng>();
-        List<LatLng> ptsDer = new ArrayList<LatLng>();
-
         //Encontrar puntos ancho y largo del poligono
-
         Double x1, x2, y1, y2;
-
 
         List<Double> Xs = new ArrayList<Double>();
         List<Double> Ys = new ArrayList<Double>();
@@ -103,112 +97,127 @@ public class GridPolygon {
             Xs.add(vertice.longitude);
             Ys.add(vertice.latitude);
         }
-
         x1 = Collections.min(Xs);
         x2 = Collections.max(Xs);
         y1 = Collections.min(Ys);
         y2 = Collections.max(Ys);
-
-
-
         System.out.println("La caja es:\nX1:"+ x1 +" Y1:" + y1+ "\nX2:" + x2+ " Y2:" + y2);
 
-        //calcular la separación en Y
-
-        Double parallelGap = 1.0;//Cambiar por setting por defecto
-
-        Double cscOrientation = csc(orientation);
-
-
-        Double yGap = cscOrientation * parallelGap;
-        System.out.println("GAP is:"+yGap);
-
-        if (yGap < 0) yGap = yGap * (-1);
+        //Ecuación de la recta
+        //TODO: Calcular pendiente según orientacion
+        if (orientation==(Math.PI*1/2)||orientation==(Math.PI*1/2)){
+            //SI la recta es vertical
+            List<LatLng> ptsArriba = new ArrayList<LatLng>();
+            List<LatLng> ptsAbajo = new ArrayList<LatLng>();
 
 
-        System.out.println("La separación es: "+ yGap);
+        } else if (orientation==0||orientation==Math.PI){
+            //SI la recta es horizontal
+            List<LatLng> ptsIzq = new ArrayList<LatLng>();
+            List<LatLng> ptsDer = new ArrayList<LatLng>();
+
+        }else {
+            List<LatLng> ptsIzq = new ArrayList<LatLng>();
+            List<LatLng> ptsDer = new ArrayList<LatLng>();
+            //si la recta es diagonal
+            Double m = Math.tan(Math.PI);  //deg or rad?
+            System.out.println("M= " + m);
+            //calcular la separación en Y
+
+            Double cscOrientation = csc(orientation);
+
+            Double yGap = cscOrientation * parallelGap;
+            System.out.println("GAP is:"+yGap);
+
+            if (yGap < 0) yGap = yGap * (-1);
 
 
-        Double tempXder, tempYder, tempXizq, tempYizq;
+            System.out.println("La separación es: "+ yGap);
 
-        tempXizq = x1;
-        tempYizq = y2 - yGap;
-        Double B = tempYizq - m * tempXizq;
-        tempYder = y2;
 
-        System.out.println("B: "+B);
-        System.out.println("tyi= " + tempYizq + " y1= " + y1);
+            Double tempXder, tempYder, tempXizq, tempYizq;
 
-        System.out.println("primera mitad");
+            tempXizq = x1;
+            tempYizq = y2 - yGap;
+            Double B = tempYizq - m * tempXizq;
+            tempYder = y2;
 
-        //Calcular cada recta desde una punta del cuadrilatero
-        while (y1.compareTo(tempYizq)<0){
+            System.out.println("B: "+B);
+            System.out.println("tyi= " + tempYizq + " y1= " + y1);
 
-            //Genero el punto
-            ptsIzq.add(new LatLng(tempYizq, tempXizq));
+            System.out.println("primera mitad");
 
-            //calculamos X derecho
-            tempXder = (tempYder - B) / m;
-            if (tempXder >= x2) {
-                tempXder = x2;
-                tempYder = tempYder - yGap;
+            //Calcular cada recta desde una punta del cuadrilatero
+            while (y1.compareTo(tempYizq)<0){
+
+                //Genero el punto
+                ptsIzq.add(new LatLng(tempYizq, tempXizq));
+
+                //calculamos X derecho
+                tempXder = (tempYder - B) / m;
+                if (tempXder >= x2) {
+                    tempXder = x2;
+                    tempYder = tempYder - yGap;
+                }
+
+                //añado puntos a la derecha
+                ptsDer.add(new LatLng(tempYder, tempXder));
+
+                //Calculo la ecuacion nueva
+                B = B - yGap;
+                tempYizq = tempYizq - yGap;
+                System.out.println("B1: "+ B + " X1: " + tempXizq +" Y1: " + tempYizq);
+
             }
 
-            //añado puntos a la derecha
-            ptsDer.add(new LatLng(tempYder, tempXder));
+            System.out.printf("Segunda Mitad");
+            do {
 
-            //Calculo la ecuacion nueva
-            B = B - yGap;
-            tempYizq = tempYizq - yGap;
-            System.out.println("B1: "+ B + " X1: " + tempXizq +" Y1: " + tempYizq);
+                if (tempYizq < y1) tempYizq = y1;
+                tempXizq = (tempYizq - B) / m;
+
+                //genero el punto izquierdo
+                ptsIzq.add(new LatLng(tempYizq, tempXizq));
+
+                //calculo el punto derecho
+
+                tempXder = (tempYder - B) / m;
+                if (tempXder >= x2) {
+                    tempXder = x2;
+                    tempYder -= yGap;
+                }
+
+                ptsDer.add(new LatLng(tempYder, tempXder));
+
+                System.out.println("B2: "+ B + " X2: " + tempXizq +" Y2: " + tempYizq);
+
+                B = B - yGap;
+
+            } while (tempXizq.compareTo(x2) < 0 && tempYder.compareTo(y1)>0);
+
+
+
+            //TODO: recortar grilla
+
+
+            //regenerar la grilla
+
+            Boolean derecha = true;
+
+            for (int i = 0; i< ptsDer.size(); i++){
+                if(derecha){
+                    this.grid.add(ptsDer.get(i));
+                    this.grid.add(ptsIzq.get(i));
+                    derecha = false;
+                }else{
+                    this.grid.add(ptsIzq.get(i));
+                    this.grid.add(ptsDer.get(i));
+                    derecha = true;
+                }
+            }
 
         }
 
-        System.out.printf("Segunda Mitad");
-        while (tempXizq < x2){
-
-            if (tempYizq < y1) tempYizq = y1;
-            tempXizq = (tempYizq - B) / m;
-
-            //genero el punto izquierdo
-            ptsIzq.add(new LatLng(tempYizq, tempXizq));
-
-            //calculo el punto derecho
-
-            tempXder = (tempYder - B) / m;
-            if (tempXder >= x2) {
-                tempXder = x2;
-                tempYder -= yGap;
-            }
-
-            ptsDer.add(new LatLng(tempYder, tempXder));
-
-            System.out.println("B2: "+ B + " X2: " + tempXizq +" Y2: " + tempYizq);
-
-            B = B - yGap;
-
-        }
-
-
-
-        //TODO: recortar grilla
-
-
-        //regenerar la grilla
-
-        Boolean derecha = true;
-
-        for (int i = 0; i< ptsDer.size(); i++){
-            if(derecha){
-                this.grid.add(ptsDer.get(i));
-                this.grid.add(ptsIzq.get(i));
-                derecha = false;
-            }else{
-                this.grid.add(ptsIzq.get(i));
-                this.grid.add(ptsDer.get(i));
-                derecha = true;
-            }
-        }
 
     }
 
