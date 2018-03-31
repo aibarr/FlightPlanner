@@ -1,6 +1,7 @@
 package cl.usach.abarra.flightplanner;
 
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -22,6 +23,8 @@ import android.support.annotation.Nullable;
 import android.support.design.widget.BottomSheetBehavior;
 
 import android.support.v4.content.ContextCompat;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -464,6 +467,8 @@ public class MapEditorFragment extends Fragment {
                 //Seteamos Flag para avisar que estoy creando un polígono
                 buttonFlag = 2;
 
+                final GridPolygon gridPolygon = new GridPolygon();
+
                 statusBar.setText("Creando Poligono");
 
                 //Lista de vertices para el polígono
@@ -507,7 +512,34 @@ public class MapEditorFragment extends Fragment {
                     }
                 });
 
-                
+                orientationInput.setVisibility(EditText.VISIBLE);
+                orientationInput.setBackgroundColor(Color.GRAY);
+                orientationInput.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+
+                orientationInput.addTextChangedListener(new TextWatcher() {
+                    @Override
+                    public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+                    }
+
+                    @Override
+                    public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+                    }
+
+                    @Override
+                    public void afterTextChanged(Editable s) {
+                        System.out.println(s.toString());
+                        if(s != null &&!((Integer.parseInt(s.toString())>180)||(Integer.parseInt(s.toString())<0))){
+                            if(vertices != null && vertices.size()>2){
+
+                            }
+
+
+                        }
+
+                    }
+                });
 
 
                 finishButton.setVisibility(Button.VISIBLE);
@@ -537,13 +569,14 @@ public class MapEditorFragment extends Fragment {
                                         map.setOnMapClickListener(null);
                                         statusBar.setText("");
                                         finishButton.setVisibility(View.GONE);
+                                        orientationInput.setVisibility(View.GONE);
                                         buttonFlag  =  0;
                                         Thread addPoly = new Thread(new Runnable() {
                                             @Override
                                             public void run() {
                                                 System.out.println("creando Poligono Grilla");
-                                                GridPolygon gridPolygon = new GridPolygon(vertices);
-                                                gridPolygon.calculateGrid(0.785398);
+                                                gridPolygon.setVertices(vertices);
+                                                gridPolygon.calculateGrid(Math.toRadians(Double.valueOf(orientationInput.getText().toString())));
                                                 ptsRoute.addAll(gridPolygon.getGrid());
                                             }
                                         });
@@ -567,14 +600,10 @@ public class MapEditorFragment extends Fragment {
                                         map.setOnMapClickListener(null);
                                         statusBar.setText("");
                                         System.out.println("Entrado a Tarea");
-                                        GridPolygon gridPolygon = new GridPolygon(vertices);
+                                        gridPolygon.setVertices(vertices);
                                         System.out.println("creando Poligono Grilla");
-                                        gridPolygon.calculateGrid(1.414);
-                                        System.out.println(gridPolygon.getCenter().toString());
-                                        map.addMarker(new MarkerOptions().position(gridPolygon.getCenter()));
-                                        System.out.println(gridPolygon.getGrid().toString());
+                                        gridPolygon.calculateGrid(Math.toRadians(Double.valueOf(orientationInput.getText().toString())));
                                         ptsRoute.addAll(gridPolygon.getGrid());
-                                        System.out.println(gridPolygon.getGrid().toString());
                                         route.setPoints(ptsRoute);
                                         /*final Thread addPoly = new Thread(new Runnable() {
                                             @Override
@@ -585,6 +614,7 @@ public class MapEditorFragment extends Fragment {
                                         addPoly.start();*/
 
                                         finishButton.setVisibility(View.GONE);
+                                        orientationInput.setVisibility(View.GONE);
 
                                     }
                                 })

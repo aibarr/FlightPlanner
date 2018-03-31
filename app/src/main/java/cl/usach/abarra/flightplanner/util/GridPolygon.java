@@ -22,16 +22,27 @@ public class GridPolygon {
     Double area;
     LatLng center;
 
+    Double rad2deg = (180 / Math.PI);
+    Double deg2rad = (1.0 / rad2deg);
+
+
+
 
     public GridPolygon() {
         this.grid = new ArrayList<LatLng>();
     }
+
+
 
     public GridPolygon(List<LatLng> vertices) {
         this.vertices = vertices;
         this.calculateArea();
         this.calculateCenter();
         this.grid = new ArrayList<LatLng>();
+    }
+
+    public void setVertices(List<LatLng> vertices) {
+        this.vertices = vertices;
     }
 
     public List<LatLng> getGrid() {
@@ -77,8 +88,6 @@ public class GridPolygon {
     public void calculateGrid(Double orientation){
         System.out.println("Calculando Grilla");
 
-
-
         //TODO:Cambiar por setting por defecto
         Double parallelGap = 0.5;
 
@@ -105,10 +114,19 @@ public class GridPolygon {
 
         //Ecuación de la recta
         //TODO: Calcular pendiente según orientacion
-        if (orientation==(Math.PI*1/2)||orientation==(Math.PI*1/2)){
+        if (orientation==(Math.PI*1/2)||orientation==(Math.PI*3/2)){
             //SI la recta es vertical
             List<LatLng> ptsArriba = new ArrayList<LatLng>();
             List<LatLng> ptsAbajo = new ArrayList<LatLng>();
+
+            Double tempX = x1;
+
+            while (tempX < x2){
+                ptsArriba.add(new LatLng(y1, tempX));
+                ptsAbajo.add(new LatLng(y2, tempX));
+
+                tempX += parallelGap;
+            }
 
 
         } else if (orientation==0||orientation==Math.PI){
@@ -116,11 +134,20 @@ public class GridPolygon {
             List<LatLng> ptsIzq = new ArrayList<LatLng>();
             List<LatLng> ptsDer = new ArrayList<LatLng>();
 
-        }else {
+            Double tempY = y2;
+
+            while (tempY > y1){
+                ptsIzq.add(new LatLng(tempY,x1));
+                ptsDer.add(new LatLng(tempY,x2));
+
+                tempY -= parallelGap;
+            }
+
+        }else{
+            //si la recta es diagonal
             List<LatLng> ptsIzq = new ArrayList<LatLng>();
             List<LatLng> ptsDer = new ArrayList<LatLng>();
-            //si la recta es diagonal
-            Double m = Math.tan(Math.PI);  //deg or rad?
+            Double m = Math.atan(orientation);  //deg
             System.out.println("M= " + m);
             //calcular la separación en Y
 
@@ -242,6 +269,11 @@ public class GridPolygon {
         centerLatLng =  bounds.getCenter();
 
         return centerLatLng;
+    }
+
+    class LatLngLine{
+        public LatLng latLng;
+
     }
 
 }
