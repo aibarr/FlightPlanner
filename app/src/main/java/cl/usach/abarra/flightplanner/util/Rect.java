@@ -8,6 +8,10 @@ public class Rect {
     public Double width;
     public Double height;
 
+    public Rect(){
+
+    }
+
     public Rect(Double left, Double top, Double width, Double height){
         this.left = left;
         this.top = top;
@@ -23,15 +27,15 @@ public class Rect {
         return bottom - top;
     }
 
-    public Double MidWidth(){
+    public Double midWidth(){
         return ((right - left)/ 2) + left;
     }
 
-    public Double MidHeight(){
+    public Double midHeight(){
         return ((top - bottom)/2) + bottom;
     }
 
-    public Double DisgDistance() {
+    public Double diagDistance() {
         //Pitagoras
         return  Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
     }

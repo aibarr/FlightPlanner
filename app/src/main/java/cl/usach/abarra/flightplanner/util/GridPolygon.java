@@ -4,9 +4,10 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by Alfredo Barra on 30-08-2017. Pre-grade project.
@@ -15,15 +16,17 @@ import java.util.List;
 
 //TODO: añadir algoritmo para calcular poligonos
 public class GridPolygon {
-    List<LatLng> vertices;
+    private List<LatLng> vertices;
     List<LatLng> finalRoute;
     Double altitude;
-    List<LatLng> grid;
-    Double area;
-    LatLng center;
+    private List<LatLng> grid;
+    private Double area;
+    private LatLng center;
 
-    Double rad2deg = (180 / Math.PI);
-    Double deg2rad = (1.0 / rad2deg);
+    private static Double rad2deg = (180 / Math.PI);
+    private static Double deg2rad = (1.0 / rad2deg);
+
+    private static PointLatLngAlt StartPointLatLngAlt = PointLatLngAlt.zero;
 
 
 
@@ -253,7 +256,7 @@ public class GridPolygon {
      * @param theta angle in radians
      * @return cosecant of theta.
      */
-    public double csc ( double theta )
+    private double csc(double theta)
     {
         return 1.0 / Math.sin( theta );
     }
@@ -271,8 +274,635 @@ public class GridPolygon {
         return centerLatLng;
     }
 
+    public void calculateGridMP(Double height, Double distance, Double spacing, Double angle, float minLaneSeparation, float leadin, StartPosition startpos, PointLatLngAlt homeLocation){
+
+
+
+        if (spacing < 4 && spacing != 0)
+            spacing = 4.0;
+
+        if (distance < 0.1)
+            distance = 0.1;
+
+        List<PointLatLngAlt> polygon = new ArrayList<PointLatLngAlt>();
+
+        if (this.vertices.size() == 0){
+            this.vertices = new ArrayList<>();
+            return;
+        }else{
+            for (LatLng vertice : vertices){
+                polygon.add(new PointLatLngAlt(vertice));
+            }
+        }
+
+        //Make a non round number in case of corner cases
+        if (minLaneSeparation != 0){
+            minLaneSeparation += 0.5F;
+        }
+        //Lane separation in meters
+        Double minLaneSeparationInMeters = minLaneSeparation * distance;
+
+        List<PointLatLngAlt> ans = new ArrayList<PointLatLngAlt>();
+
+        //utm zone distance calcs will be done in
+        int utmzone = polygon.get(0).getUTMZone();
+
+        //utm position list
+        //TODO:terminar lista a utm
+        List<UTMPos> UTMPositions = new ArrayList<UTMPos>();
+
+        //Get mins max coverage area
+        Rect area = getPolyMinMax(UTMPositions);
+
+        //Used to determine the size of the outer grid area
+        Double diagdist = area.diagDistance();
+
+        //somewhere to store out generated lines
+        List<LatLngLine> grid = new ArrayList<LatLngLine>();
+        //number of lines we need
+        int lines = 0;
+
+        //get start point middle
+
+        double x = area.midWidth();
+        double y = area.midHeight();
+
+        addtomap(new UTMPos(x, y, utmzone),"Base");
+
+        // get left extent
+        double xb1 = x;
+        double yb1 = y;
+        // to the left
+        newpos( xb1,  yb1, angle - 90, diagdist / 2 + distance);
+        // backwards
+        newpos( xb1,  yb1, angle + 180, diagdist / 2 + distance);
+
+        UTMPos left = new UTMPos(xb1, yb1, utmzone);
+
+        addtomap(left, "left");
+
+        // get right extent
+        double xb2 = x;
+        double yb2 = y;
+        // to the right
+        newpos( xb2,  yb2, angle + 90, diagdist / 2 + distance);
+        // backwards
+        newpos( xb2,  yb2, angle + 180, diagdist / 2 + distance);
+
+        UTMPos right = new UTMPos(xb2, yb2, utmzone);
+
+        addtomap(right,"right");
+
+        // set start point to left hand side
+        x = xb1;
+        y = yb1;
+
+        // draw the outergrid, this is a grid that cover the entire area of the rectangle plus more.
+        while (lines < ((diagdist + distance * 2) / distance))
+        {
+            // copy the start point to generate the end point
+            double nx = x;
+            double ny = y;
+            newpos( nx,  ny, angle, diagdist + distance*2);
+
+            LatLngLine line = new LatLngLine();
+            line.p1 = new UTMPos(x, y, utmzone);
+            line.p2 = new UTMPos(nx, ny, utmzone);
+            line.basepnt = new UTMPos(x, y, utmzone);
+            grid.add(line);
+
+            // addtomap(line);
+
+            newpos( x,  y, angle + 90, distance);
+            lines++;
+        }
+
+        // find intersections with our polygon
+
+        // store lines that dont have any intersections
+        List<LatLngLine> remove = new ArrayList<LatLngLine>();
+
+        int gridno = grid.size();
+
+        // cycle through our grid
+        for (int a = 0; a < gridno; a++)
+        {
+            double closestdistance = Double.MAX_VALUE;
+            double farestdistance = Double.MIN_VALUE;
+
+            UTMPos closestpoint = UTMPos.zero;
+            UTMPos farestpoint = UTMPos.zero;
+
+            // somewhere to store our intersections
+            List<UTMPos> matchs = new ArrayList<UTMPos>();
+
+            int b = -1;
+            int crosses = 0;
+            UTMPos newUTMPos = UTMPos.zero;
+            for (UTMPos pnt : UTMPositions)
+            {
+                b++;
+                if (b == 0)
+                {
+                    continue;
+                }
+                newUTMPos = FindLineIntersection(UTMPositions.get(b - 1), UTMPositions.get(b), grid.get(a).p1, grid.get(a).p2);
+                if (!newUTMPos.isZero())
+                {
+                    crosses++;
+                    matchs.add(newUTMPos);
+                    if (closestdistance > grid.get(a).p1.GetDistance(newUTMPos))
+                    {
+                        closestpoint.y = newUTMPos.y;
+                        closestpoint.x = newUTMPos.x;
+                        closestpoint.zone = newUTMPos.zone;
+                        closestdistance = grid.get(a).p1.GetDistance(newUTMPos);
+                    }
+                    if (farestdistance < grid.get(a).p1.GetDistance(newUTMPos))
+                    {
+                        farestpoint.y = newUTMPos.y;
+                        farestpoint.x = newUTMPos.x;
+                        farestpoint.zone = newUTMPos.zone;
+                        farestdistance = grid.get(a).p1.GetDistance(newUTMPos);
+                    }
+                }
+            }
+            if (crosses == 0) // outside our polygon
+            {
+                if (!PointInPolygon(grid.get(a).p1, UTMPositions) && !PointInPolygon(grid.get(a).p2, UTMPositions))
+                    remove.add(grid.get(a));
+            }
+            else if (crosses == 1) // bad - shouldnt happen
+            {
+
+            }
+            else if (crosses == 2) // simple start and finish
+            {
+                LatLngLine line = grid.get(a);
+                line.p1 = closestpoint;
+                line.p2 = farestpoint;
+                grid.set(a, line);
+            }
+            else // multiple intersections
+            {
+                LatLngLine line = grid.get(a);
+                remove.add(line);
+
+                while (matchs.size() > 1)
+                {
+                    LatLngLine newline = new LatLngLine();
+
+                    closestpoint = findClosestPoint(closestpoint, matchs);
+                    newline.p1 = closestpoint;
+                    matchs.remove(closestpoint);
+
+                    closestpoint = findClosestPoint(closestpoint, matchs);
+                    newline.p2 = closestpoint;
+                    matchs.remove(closestpoint);
+
+                    newline.basepnt = line.basepnt;
+
+                    grid.add(newline);
+                }
+            }
+        }
+
+        // cleanup and keep only lines that pass though our polygon
+        for (LatLngLine line : remove)
+        {
+            grid.remove(line);
+        }
+
+        // debug
+        for (LatLngLine line : grid)
+        {
+            addtomap(line);
+        }
+
+        if (grid.size() == 0)
+            return;
+
+        // pick start positon based on initial point rectangle
+        UTMPos startposutm;
+
+        switch (startpos)
+        {
+            default:
+            case Home:
+                startposutm = new UTMPos(homeLocation);
+                break;
+            case BottomLeft:
+                startposutm = new UTMPos(area.left, area.bottom, utmzone);
+                break;
+            case BottomRight:
+                startposutm = new UTMPos(area.right, area.bottom, utmzone);
+                break;
+            case TopLeft:
+                startposutm = new UTMPos(area.left, area.top, utmzone);
+                break;
+            case TopRight:
+                startposutm = new UTMPos(area.right, area.top, utmzone);
+                break;
+            case Point:
+                startposutm = new UTMPos(StartPointLatLngAlt);
+                break;
+        }
+
+        // find the closes polygon point based from our startpos selection
+        startposutm = findClosestPoint(startposutm, UTMPositions);
+
+        // find closest line point to startpos
+        LatLngLine closest = findClosestLine(startposutm, grid, 0 /*Lane separation does not apply to starting point*/, angle);
+
+        UTMPos lastpnt;
+
+        // get the closes point from the line we picked
+        if (closest.p1.GetDistance(startposutm) < closest.p2.GetDistance(startposutm))
+        {
+            lastpnt = closest.p1;
+        }
+        else
+        {
+            lastpnt = closest.p2;
+        }
+
+        // S =  start
+        // E = end
+        // ME = middle end
+        // SM = start middle
+
+        while (grid.size() > 0)
+        {
+            // for each line, check which end of the line is the next closest
+            if (closest.p1.GetDistance(lastpnt) < closest.p2.GetDistance(lastpnt))
+            {
+                UTMPos newstart = newpos(closest.p1, angle, -leadin);
+                newstart.tag = "S";
+
+                addtomap(newstart, "S");
+                ans.add(newstart.toLLA());
+
+                closest.p1.tag = "SM";
+                addtomap(closest.p1, "SM");
+                ans.add(closest.p1.toLLA());
+
+                if (spacing > 0)
+                {
+                    for (int d = (int)(spacing - ((closest.basepnt.GetDistance(closest.p1)) % spacing));
+                         d < (closest.p1.GetDistance(closest.p2));
+                         d += spacing.intValue())
+                    {
+                        double ax = closest.p1.x;
+                        double ay = closest.p1.y;
+
+                        newpos( ax,  ay, angle, d);
+                        UTMPos UTMPos1 = new UTMPos(ax, ay, utmzone) ;
+                        UTMPos1.tag = "M";
+                        addtomap(UTMPos1, "M");
+                        ans.add(UTMPos1.toLLA());
+                    }
+                }
+
+                closest.p2.tag = "ME";
+                addtomap(closest.p2, "ME");
+                ans.add(closest.p2.toLLA());
+
+                UTMPos newend = newpos(closest.p2, angle, 0.0);
+                newend.tag = "E";
+                addtomap(newend, "E");
+                ans.add(newend.toLLA());
+
+                lastpnt = closest.p2;
+
+                grid.remove(closest);
+                if (grid.size() == 0)
+                    break;
+
+                closest = findClosestLine(newend, grid, minLaneSeparationInMeters, angle);
+            }
+            else
+            {
+                UTMPos newstart = newpos(closest.p2, angle, leadin);
+                newstart.tag = "S";
+                addtomap(newstart, "S");
+                ans.add(newstart.toLLA());
+
+                closest.p2.tag = "SM";
+                addtomap(closest.p2, "SM");
+                ans.add(closest.p2.toLLA());
+
+                if (spacing > 0)
+                {
+                    for (int d = (int)((closest.basepnt.GetDistance(closest.p2)) % spacing);
+                         d < (closest.p1.GetDistance(closest.p2));
+                         d += spacing.intValue())
+                    {
+                        double ax = closest.p2.x;
+                        double ay = closest.p2.y;
+
+                        newpos( ax,  ay, angle, -d);
+                        UTMPos UTMPos2 = new UTMPos(ax, ay, utmzone) ;
+                        UTMPos2.tag = "M";
+                        addtomap(UTMPos2, "M");
+                        ans.add(UTMPos2.toLLA());
+                    }
+                }
+
+                closest.p1.tag = "ME";
+                addtomap(closest.p1, "ME");
+                ans.add(closest.p1.toLLA());
+
+                UTMPos newend = newpos(closest.p1, angle, 0.0);
+                newend.tag = "E";
+                addtomap(newend, "E");
+                ans.add(newend.toLLA());
+
+                lastpnt = closest.p1;
+
+                grid.remove(closest);
+                if (grid.size() == 0)
+                    break;
+                closest = findClosestLine(newend, grid, minLaneSeparationInMeters, angle);
+            }
+        }
+
+        // set the altitude on all points
+        for (PointLatLngAlt plla : ans){
+            plla.alt = height;
+        };
+
+    }
+
+    // polar to rectangular
+    private static void newpos(double x, double y, double bearing, double distance)
+    {
+        double degN = 90 - bearing;
+        if (degN < 0)
+            degN += 360;
+        x = x + distance * Math.cos(degN * deg2rad);
+        y = y + distance * Math.sin(degN * deg2rad);
+    }
+
+    // polar to rectangular
+    private static UTMPos newpos(UTMPos input, double bearing, double distance)
+    {
+        double degN = 90 - bearing;
+        if (degN < 0)
+            degN += 360;
+        double x = input.x + distance * Math.cos(degN * deg2rad);
+        double y = input.y + distance * Math.sin(degN * deg2rad);
+
+        return new UTMPos(x, y, input.zone);
+    }
+
+    private static Rect getPolyMinMax(List<UTMPos> UTMPos)
+    {
+        if (UTMPos.size() == 0)
+            return new Rect();
+
+        double minx, miny, maxx, maxy;
+
+        minx = maxx = UTMPos.get(0).x;
+        miny = maxy = UTMPos.get(0).y;
+
+        for (UTMPos pnt : UTMPos)
+        {
+            minx = Math.min(minx, pnt.x);
+            maxx = Math.max(maxx, pnt.x);
+
+            miny = Math.min(miny, pnt.y);
+            maxy = Math.max(maxy, pnt.y);
+        }
+
+        return new Rect(minx, maxy, maxx - minx,miny - maxy);
+    }
+
+    private static void addtomap(LatLngLine pos)
+    {
+
+    }
+
+    private static void addtomap(UTMPos pos, String tag)
+    {
+
+    }
+
+    /// <summary>
+    /// from http://stackoverflow.com/questions/1119451/how-to-tell-if-a-line-intersects-a-polygon-in-c
+    /// </summary>
+    /// <param name="start1"></param>
+    /// <param name="end1"></param>
+    /// <param name="start2"></param>
+    /// <param name="end2"></param>
+    /// <returns></returns>
+    private static UTMPos FindLineIntersection(UTMPos start1, UTMPos end1, UTMPos start2, UTMPos end2)
+    {
+        double denom = ((end1.x - start1.x) * (end2.y - start2.y)) - ((end1.y - start1.y) * (end2.x - start2.x));
+        //  AB & CD are parallel
+        if (denom == 0)
+            return UTMPos.zero;
+        double numer = ((start1.y - start2.y) * (end2.x - start2.x)) - ((start1.x - start2.x) * (end2.y - start2.y));
+        double r = numer / denom;
+        double numer2 = ((start1.y - start2.y) * (end1.x - start1.x)) - ((start1.x - start2.x) * (end1.y - start1.y));
+        double s = numer2 / denom;
+        if ((r < 0 || r > 1) || (s < 0 || s > 1))
+            return UTMPos.zero;
+        // Find intersection point
+        UTMPos result = new UTMPos();
+        result.x = start1.x + (r * (end1.x - start1.x));
+        result.y = start1.y + (r * (end1.y - start1.y));
+        result.zone = start1.zone;
+        return result;
+    }
+
+    /// <summary>
+    /// from http://stackoverflow.com/questions/1119451/how-to-tell-if-a-line-intersects-a-polygon-in-c
+    /// </summary>
+    /// <param name="start1"></param>
+    /// <param name="end1"></param>
+    /// <param name="start2"></param>
+    /// <param name="end2"></param>
+    /// <returns></returns>
+    public static UTMPos FindLineIntersectionExtension(UTMPos start1, UTMPos end1, UTMPos start2, UTMPos end2)
+    {
+        double denom = ((end1.x - start1.x) * (end2.y - start2.y)) - ((end1.y - start1.y) * (end2.x - start2.x));
+        //  AB & CD are parallel
+        if (denom == 0)
+            return UTMPos.zero;
+        double numer = ((start1.y - start2.y) * (end2.x - start2.x)) -
+                ((start1.x - start2.x) * (end2.y - start2.y));
+        double r = numer / denom;
+        double numer2 = ((start1.y - start2.y) * (end1.x - start1.x)) -
+                ((start1.x - start2.x) * (end1.y - start1.y));
+        double s = numer2 / denom;
+        if ((r < 0 || r > 1) || (s < 0 || s > 1))
+        {
+            // line intersection is outside our lines.
+        }
+        // Find intersection point
+        UTMPos result = new UTMPos();
+        result.x = start1.x + (r * (end1.x - start1.x));
+        result.y = start1.y + (r * (end1.y - start1.y));
+        result.zone = start1.zone;
+        return result;
+    }
+
+    private static UTMPos findClosestPoint(UTMPos start, List<UTMPos> list)
+    {
+        UTMPos answer = UTMPos.zero;
+        double currentbest = Double.MAX_VALUE;
+
+        for (UTMPos pnt : list)
+        {
+            double dist1 = start.GetDistance(pnt);
+
+            if (dist1 < currentbest)
+            {
+                answer = pnt;
+                currentbest = dist1;
+            }
+        }
+
+        return answer;
+    }
+
+    // Add an angle while normalizing output in the range 0...360
+    private static double AddAngle(double angle, double degrees)
+    {
+        angle += degrees;
+
+        angle = angle % 360;
+
+        while (angle < 0)
+        {
+            angle += 360;
+        }
+        return angle;
+    }
+
+    private static LatLngLine findClosestLine(UTMPos start, List<LatLngLine> list, double minDistance, double angle)
+    {
+        // By now, just add 5.000 km to our lines so they are long enough to allow intersection
+        double METERS_TO_EXTEND = 5000000;
+
+        double perperndicularOrientation = AddAngle(angle, 90);
+
+        // Calculation of a perpendicular line to the grid lines containing the "start" point
+        /*
+         *  --------------------------------------|------------------------------------------
+         *  --------------------------------------|------------------------------------------
+         *  -------------------------------------start---------------------------------------
+         *  --------------------------------------|------------------------------------------
+         *  --------------------------------------|------------------------------------------
+         *  --------------------------------------|------------------------------------------
+         *  --------------------------------------|------------------------------------------
+         *  --------------------------------------|------------------------------------------
+         */
+        UTMPos start_perpendicular_line = newpos(start, perperndicularOrientation, -METERS_TO_EXTEND);
+        UTMPos stop_perpendicular_line = newpos(start, perperndicularOrientation, METERS_TO_EXTEND);
+
+        // Store one intersection point per grid line
+        Map<UTMPos, LatLngLine> intersectedPoints = new HashMap<UTMPos, LatLngLine>();
+        // lets order distances from every intersected point per line with the "start" point
+        Map<Double, UTMPos> ordered_min_to_max = new HashMap<Double, UTMPos>();
+
+        for (LatLngLine line : list)
+        {
+            // Extend line at both ends so it intersecs for sure with our perpendicular line
+            UTMPos extended_line_start = newpos(line.p1, angle, -METERS_TO_EXTEND);
+            UTMPos extended_line_stop = newpos(line.p2, angle, METERS_TO_EXTEND);
+            // Calculate intersection point
+            UTMPos p = FindLineIntersection(extended_line_start, extended_line_stop, start_perpendicular_line, stop_perpendicular_line);
+
+            // Store it
+            intersectedPoints.put(p, line);
+
+            // Calculate distances between interesected point and "start" (i.e. line and start)
+            double distance_p = start.GetDistance(p);
+            if (!ordered_min_to_max.containsKey(distance_p))
+                ordered_min_to_max.put(distance_p, p);
+        }
+
+        // Acquire keys and sort them.
+        List<Double> ordered_keys = new ArrayList<>();
+        ordered_keys.addAll(ordered_min_to_max.keySet());
+        Collections.sort(ordered_keys);
+
+        // Lets select a line that is the closest to "start" point but "mindistance" away at least.
+        // If we have only one line, return that line whatever the minDistance says
+        double key = Double.MAX_VALUE;
+        int i = 0;
+        while (key == Double.MAX_VALUE && i < ordered_keys.size())
+        {
+            if (ordered_keys.get(i) >= minDistance)
+                key = ordered_keys.get(i);
+            i++;
+        }
+
+        // If no line is selected (because all of them are closer than minDistance, then get the farest one
+        if (key == Double.MAX_VALUE)
+            key = ordered_keys.get(ordered_keys.size()-1);
+
+        // return line
+        return intersectedPoints.get(ordered_min_to_max.get(key));
+
+    }
+
+    private static boolean PointInPolygon(UTMPos p, List<UTMPos> poly)
+    {
+        UTMPos p1, p2;
+        boolean inside = false;
+
+        if (poly.size() < 3)
+        {
+            return inside;
+        }
+        UTMPos oldPoint = new UTMPos(poly.get(poly.size() - 1));
+
+        for (int i = 0; i < poly.size(); i++)
+        {
+
+            UTMPos newPoint = new UTMPos(poly.get(i));
+
+            if (newPoint.y > oldPoint.y)
+            {
+                p1 = oldPoint;
+                p2 = newPoint;
+            }
+            else
+            {
+                p1 = newPoint;
+                p2 = oldPoint;
+            }
+
+            if ((newPoint.y < p.y) == (p.y <= oldPoint.y)
+                    && ((double)p.x - (double)p1.x) * (double)(p2.y - p1.y)
+                    < ((double)p2.x - (double)p1.x) * (double)(p.y - p1.y))
+            {
+                inside = !inside;
+            }
+            oldPoint = newPoint;
+        }
+        return inside;
+    }
+
+    public enum StartPosition
+    {
+        Home ,
+        BottomLeft ,
+        TopLeft ,
+        BottomRight ,
+        TopRight ,
+        Point
+    }
+
     class LatLngLine{
-        public LatLng latLng;
+        // start of line
+        UTMPos p1;
+        // end of line
+        UTMPos p2;
+        // used as a base for grid along line (initial setout)
+        UTMPos basepnt;
 
     }
 

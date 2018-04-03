@@ -21,6 +21,19 @@ public class UTMPos implements Parcelable{
 
     public static final UTMPos zero = new UTMPos(0.0,0.0,0);
 
+    public UTMPos(){
+
+    }
+
+    public UTMPos(PointLatLngAlt pos)
+    {
+        Double[] dd = pos.toUTM();
+        this.x = dd[0];
+        this.y = dd[1];
+        this.zone = pos.getUTMZone();
+        this.tag = null;
+    }
+
     public UTMPos(Double x, Double y, int zone) {
         this.x = x;
         this.y = y;
@@ -33,6 +46,31 @@ public class UTMPos implements Parcelable{
         this.y = pos.y;
         this.zone = pos.zone;
         this.tag = pos.tag;
+    }
+
+    public PointLatLngAlt toLLA2()
+    {
+        GeoUtility.GeoSystem.UTM utm = new GeoUtility.GeoSystem.UTM(Math.abs(zone), x, y, zone < 0 ? GeoUtility.GeoSystem.Base.Geocentric.Hemisphere.South : GeoUtility.GeoSystem.Base.Geocentric.Hemisphere.North);
+
+        PointLatLngAlt ans = ((GeoUtility.GeoSystem.Geographic)utm);
+        if (this.tag != null)
+            ans.tag = this.tag;
+
+        return ans;
+    }
+
+    public PointLatLngAlt toLLA()
+    {
+        IProjectedCoordinateSystem utm = ProjectedCoordinateSystem.WGS84_UTM(Math.abs(zone), zone < 0 ? false : true);
+        ICoordinateTransformation trans = ctfac.CreateFromCoordinateSystems(wgs84, utm);
+
+        // get leader utm coords
+        double[] pll = trans.MathTransform.Inverse().Transform(this);
+
+        PointLatLngAlt ans = new PointLatLngAlt(pll[1], pll[0]);
+        if (this.tag != null)
+            ans.tag = this.tag;
+        return ans;
     }
 
     //TODO: constructor desde ptnlatlng
