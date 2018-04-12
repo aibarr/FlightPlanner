@@ -37,6 +37,10 @@ public class Rect {
 
     public Double diagDistance() {
         //Pitagoras
-        return  Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
+
+        if (width== null) this.width = left - right;
+        if (height == null) this.height =  bottom - top;
+
+        return  Math.sqrt(Math.pow(this.width, 2) + Math.pow(this.height, 2));
     }
 }

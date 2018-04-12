@@ -14,7 +14,6 @@ import java.util.Map;
  */
 
 
-//TODO: añadir algoritmo para calcular poligonos
 public class GridPolygon {
     private List<LatLng> vertices;
     List<LatLng> finalRoute;
@@ -28,14 +27,9 @@ public class GridPolygon {
 
     private static PointLatLngAlt StartPointLatLngAlt = PointLatLngAlt.zero;
 
-
-
-
     public GridPolygon() {
         this.grid = new ArrayList<LatLng>();
     }
-
-
 
     public GridPolygon(List<LatLng> vertices) {
         this.vertices = vertices;
@@ -88,7 +82,7 @@ public class GridPolygon {
         this.center = new LatLng(Cy, Cx);
     }
 
-    public void calculateGrid(Double orientation){
+    public void calculateGridOLD(Double orientation){
         System.out.println("Calculando Grilla");
 
         //TODO:Cambiar por setting por defecto
@@ -275,8 +269,8 @@ public class GridPolygon {
     }
 
     public void calculateGridMP(Double height, Double distance, Double spacing, Double angle, float minLaneSeparation, float leadin, StartPosition startpos, PointLatLngAlt homeLocation){
-
-
+        //Estoy en Mission Planner
+        System.out.println("mission Planner");
 
         if (spacing < 4 && spacing != 0)
             spacing = 4.0;
@@ -308,9 +302,12 @@ public class GridPolygon {
         int utmzone = polygon.get(0).getUTMZone();
 
         //utm position list
-        //TODO:terminar lista a utm
-        List<UTMPos> UTMPositions = new ArrayList<UTMPos>();
+        List<UTMPos> UTMPositions = UTMPos.toList(PointLatLngAlt.ToUTM(utmzone, polygon), utmzone);
+        System.out.println(UTMPositions.toString());
 
+        // close the loop if its not already
+        if (UTMPositions.get(0) != UTMPositions.get(UTMPositions.size() - 1))
+            UTMPositions.add(UTMPositions.get(0));
         //Get mins max coverage area
         Rect area = getPolyMinMax(UTMPositions);
 
@@ -332,10 +329,16 @@ public class GridPolygon {
         // get left extent
         double xb1 = x;
         double yb1 = y;
+
+        double[] changePos;
         // to the left
-        newpos( xb1,  yb1, angle - 90, diagdist / 2 + distance);
+        changePos = newpos( xb1,  yb1, angle - 90, diagdist / 2 + distance);
+        xb1 = Double.valueOf(changePos[0]);
+        yb1 = Double.valueOf(changePos[1]);
         // backwards
-        newpos( xb1,  yb1, angle + 180, diagdist / 2 + distance);
+        changePos = newpos( xb1,  yb1, angle + 180, diagdist / 2 + distance);
+        xb1 = Double.valueOf(changePos[0]);
+        yb1 = Double.valueOf(changePos[1]);
 
         UTMPos left = new UTMPos(xb1, yb1, utmzone);
 
@@ -345,9 +348,13 @@ public class GridPolygon {
         double xb2 = x;
         double yb2 = y;
         // to the right
-        newpos( xb2,  yb2, angle + 90, diagdist / 2 + distance);
+        changePos = newpos( xb2,  yb2, angle + 90, diagdist / 2 + distance);
+        xb2 = Double.valueOf(changePos[0]);
+        yb2 = Double.valueOf(changePos[1]);
         // backwards
-        newpos( xb2,  yb2, angle + 180, diagdist / 2 + distance);
+        changePos = newpos( xb2,  yb2, angle + 180, diagdist / 2 + distance);
+        xb2 = Double.valueOf(changePos[0]);
+        yb2 = Double.valueOf(changePos[1]);
 
         UTMPos right = new UTMPos(xb2, yb2, utmzone);
 
@@ -361,10 +368,15 @@ public class GridPolygon {
         while (lines < ((diagdist + distance * 2) / distance))
         {
             // copy the start point to generate the end point
-            double nx = x;
-            double ny = y;
-            newpos( nx,  ny, angle, diagdist + distance*2);
+            double nx = Double.valueOf(x);
+            double ny = Double.valueOf(y);
+            changePos = newpos( nx,  ny, angle, diagdist + distance*2);
 
+            nx = Double.valueOf(changePos[0]);
+            ny = Double.valueOf(changePos[1]);
+
+
+            //TODO:Revisar la copia de memoria. Esta quedando la cagá con el movimiento de memoria y me modifica valores que no quiero modificar
             LatLngLine line = new LatLngLine();
             line.p1 = new UTMPos(x, y, utmzone);
             line.p2 = new UTMPos(nx, ny, utmzone);
@@ -373,7 +385,10 @@ public class GridPolygon {
 
             // addtomap(line);
 
-            newpos( x,  y, angle + 90, distance);
+            changePos = newpos( x,  y, angle + 90, distance);
+
+            x = Double.valueOf(changePos[0]);
+            y = Double.valueOf(changePos[1]);
             lines++;
         }
 
@@ -390,15 +405,15 @@ public class GridPolygon {
             double closestdistance = Double.MAX_VALUE;
             double farestdistance = Double.MIN_VALUE;
 
-            UTMPos closestpoint = UTMPos.zero;
-            UTMPos farestpoint = UTMPos.zero;
+            UTMPos closestpoint = new UTMPos(UTMPos.zero);
+            UTMPos farestpoint = new UTMPos(UTMPos.zero);
 
             // somewhere to store our intersections
             List<UTMPos> matchs = new ArrayList<UTMPos>();
 
             int b = -1;
             int crosses = 0;
-            UTMPos newUTMPos = UTMPos.zero;
+            UTMPos newUTMPos = new UTMPos(UTMPos.zero);
             for (UTMPos pnt : UTMPositions)
             {
                 b++;
@@ -555,7 +570,12 @@ public class GridPolygon {
                         double ax = closest.p1.x;
                         double ay = closest.p1.y;
 
-                        newpos( ax,  ay, angle, d);
+
+                        changePos = newpos( ax,  ay, angle, d);
+
+                        ax = Double.valueOf(changePos[0]);
+                        ay = Double.valueOf(changePos[1]);
+
                         UTMPos UTMPos1 = new UTMPos(ax, ay, utmzone) ;
                         UTMPos1.tag = "M";
                         addtomap(UTMPos1, "M");
@@ -600,7 +620,12 @@ public class GridPolygon {
                         double ax = closest.p2.x;
                         double ay = closest.p2.y;
 
-                        newpos( ax,  ay, angle, -d);
+
+                        changePos = newpos( ax,  ay, angle, -d);
+
+                        ax = Double.valueOf(changePos[0]);
+                        ay = Double.valueOf(changePos[1]);
+
                         UTMPos UTMPos2 = new UTMPos(ax, ay, utmzone) ;
                         UTMPos2.tag = "M";
                         addtomap(UTMPos2, "M");
@@ -631,16 +656,27 @@ public class GridPolygon {
             plla.alt = height;
         };
 
+        this.grid = new ArrayList<LatLng>();
+
+        for (PointLatLngAlt point : ans){
+            this.grid.add(new LatLng(point.lat, point.lng));
+        }
+
+        System.out.println("Calculado");
+
     }
 
     // polar to rectangular
-    private static void newpos(double x, double y, double bearing, double distance)
+    private static double[] newpos(double x, double y, double bearing, double distance)
     {
         double degN = 90 - bearing;
         if (degN < 0)
             degN += 360;
-        x = x + distance * Math.cos(degN * deg2rad);
-        y = y + distance * Math.sin(degN * deg2rad);
+        double nx = x + distance * Math.cos(degN * deg2rad);
+        double ny = y + distance * Math.sin(degN * deg2rad);
+
+        double[] ans = {nx, ny};
+        return ans;
     }
 
     // polar to rectangular
@@ -674,6 +710,8 @@ public class GridPolygon {
             maxy = Math.max(maxy, pnt.y);
         }
 
+        System.out.println("Rectangulo listo");
+
         return new Rect(minx, maxy, maxx - minx,miny - maxy);
     }
 
@@ -700,13 +738,13 @@ public class GridPolygon {
         double denom = ((end1.x - start1.x) * (end2.y - start2.y)) - ((end1.y - start1.y) * (end2.x - start2.x));
         //  AB & CD are parallel
         if (denom == 0)
-            return UTMPos.zero;
+            return new UTMPos(UTMPos.zero);
         double numer = ((start1.y - start2.y) * (end2.x - start2.x)) - ((start1.x - start2.x) * (end2.y - start2.y));
         double r = numer / denom;
         double numer2 = ((start1.y - start2.y) * (end1.x - start1.x)) - ((start1.x - start2.x) * (end1.y - start1.y));
         double s = numer2 / denom;
         if ((r < 0 || r > 1) || (s < 0 || s > 1))
-            return UTMPos.zero;
+            return new UTMPos(UTMPos.zero);
         // Find intersection point
         UTMPos result = new UTMPos();
         result.x = start1.x + (r * (end1.x - start1.x));
@@ -728,7 +766,7 @@ public class GridPolygon {
         double denom = ((end1.x - start1.x) * (end2.y - start2.y)) - ((end1.y - start1.y) * (end2.x - start2.x));
         //  AB & CD are parallel
         if (denom == 0)
-            return UTMPos.zero;
+            return new UTMPos(UTMPos.zero);
         double numer = ((start1.y - start2.y) * (end2.x - start2.x)) -
                 ((start1.x - start2.x) * (end2.y - start2.y));
         double r = numer / denom;
@@ -749,7 +787,7 @@ public class GridPolygon {
 
     private static UTMPos findClosestPoint(UTMPos start, List<UTMPos> list)
     {
-        UTMPos answer = UTMPos.zero;
+        UTMPos answer = new UTMPos(UTMPos.zero);
         double currentbest = Double.MAX_VALUE;
 
         for (UTMPos pnt : list)

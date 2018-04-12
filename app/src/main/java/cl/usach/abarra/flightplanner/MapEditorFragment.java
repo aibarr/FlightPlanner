@@ -81,6 +81,7 @@ import cl.usach.abarra.flightplanner.util.GridPolygon;
 import cl.usach.abarra.flightplanner.util.MarkerGenerator;
 import cl.usach.abarra.flightplanner.util.PlanArchiver;
 import cl.usach.abarra.flightplanner.model.Waypoint;
+import cl.usach.abarra.flightplanner.util.PointLatLngAlt;
 import ir.sohreco.androidfilechooser.ExternalStorageNotAvailableException;
 import ir.sohreco.androidfilechooser.FileChooserDialog;
 
@@ -123,6 +124,8 @@ public class MapEditorFragment extends Fragment {
     private LocationListener locationListener;
 
     private static final int LOCATION_REQUEST = 0;
+
+    private static final LatLng OFICINA = new LatLng(-33.4258741,-70.6185903);
 
     private static final String API_KEY = "AIzaSyBITRYAdWiqqRk_lj_JeVFDDKG2degBZyE";
 
@@ -576,7 +579,7 @@ public class MapEditorFragment extends Fragment {
                                             public void run() {
                                                 System.out.println("creando Poligono Grilla");
                                                 gridPolygon.setVertices(vertices);
-                                                gridPolygon.calculateGrid(Math.toRadians(Double.valueOf(orientationInput.getText().toString())));
+                                                gridPolygon.calculateGridMP(100.0,1.0,1.0,45.0, 0, 1, GridPolygon.StartPosition.Home, new PointLatLngAlt(-33.4258741,-70.6185903));
                                                 ptsRoute.addAll(gridPolygon.getGrid());
                                             }
                                         });
@@ -602,7 +605,8 @@ public class MapEditorFragment extends Fragment {
                                         System.out.println("Entrado a Tarea");
                                         gridPolygon.setVertices(vertices);
                                         System.out.println("creando Poligono Grilla");
-                                        gridPolygon.calculateGrid(Math.toRadians(Double.valueOf(orientationInput.getText().toString())));
+                                        gridPolygon.calculateGridMP(100.0,1.0,1.0,45.0, 0, 1, GridPolygon.StartPosition.Home, new PointLatLngAlt(lastLocation.latitude,lastLocation.longitude));
+                                        System.out.println("calculando");
                                         ptsRoute.addAll(gridPolygon.getGrid());
                                         route.setPoints(ptsRoute);
                                         /*final Thread addPoly = new Thread(new Runnable() {
@@ -654,7 +658,10 @@ public class MapEditorFragment extends Fragment {
             @Override
             public void onClick(View v) {
                 if (lastLocation!=null && map!=null){
+                    System.out.println("Last Location is" + lastLocation.toString());
                     map.addMarker(new MarkerOptions().position(lastLocation));
+                } else {
+                    lastLocation = OFICINA;
                 }
             }
         });

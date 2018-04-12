@@ -7,6 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import cl.usach.abarra.flightplanner.model.Waypoint;
+import gov.nasa.worldwind.avlist.AVKey;
+import gov.nasa.worldwind.geom.LatLon;
+import gov.nasa.worldwind.geom.coords.UTMCoord;
 
 public class UTMPos implements Parcelable{
 
@@ -50,9 +53,9 @@ public class UTMPos implements Parcelable{
 
     public PointLatLngAlt toLLA2()
     {
-        GeoUtility.GeoSystem.UTM utm = new GeoUtility.GeoSystem.UTM(Math.abs(zone), x, y, zone < 0 ? GeoUtility.GeoSystem.Base.Geocentric.Hemisphere.South : GeoUtility.GeoSystem.Base.Geocentric.Hemisphere.North);
+        LatLon latLon = UTMCoord.locationFromUTMCoord(Math.abs(this.zone), (zone <0 ? AVKey.SOUTH : AVKey.NORTH ), this.x, this.y, null );
+        PointLatLngAlt ans = new PointLatLngAlt(latLon.latitude.degrees, latLon.longitude.degrees);
 
-        PointLatLngAlt ans = ((GeoUtility.GeoSystem.Geographic)utm);
         if (this.tag != null)
             ans.tag = this.tag;
 
@@ -61,13 +64,9 @@ public class UTMPos implements Parcelable{
 
     public PointLatLngAlt toLLA()
     {
-        IProjectedCoordinateSystem utm = ProjectedCoordinateSystem.WGS84_UTM(Math.abs(zone), zone < 0 ? false : true);
-        ICoordinateTransformation trans = ctfac.CreateFromCoordinateSystems(wgs84, utm);
+        LatLon latLon = UTMCoord.locationFromUTMCoord(Math.abs(this.zone), (zone <0 ? AVKey.SOUTH : AVKey.NORTH ), this.x, this.y, null );
 
-        // get leader utm coords
-        double[] pll = trans.MathTransform.Inverse().Transform(this);
-
-        PointLatLngAlt ans = new PointLatLngAlt(pll[1], pll[0]);
+        PointLatLngAlt ans = new PointLatLngAlt(latLon.latitude.degrees, latLon.longitude.degrees);
         if (this.tag != null)
             ans.tag = this.tag;
         return ans;

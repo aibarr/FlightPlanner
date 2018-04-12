@@ -6,6 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import cl.usach.abarra.flightplanner.model.Waypoint;
+import gov.nasa.worldwind.geom.Angle;
+import gov.nasa.worldwind.geom.LatLon;
+import gov.nasa.worldwind.geom.coords.UTMCoord;
 
 public class PointLatLngAlt {
     public Double lat;
@@ -83,25 +86,30 @@ public class PointLatLngAlt {
     // force a zone
     public Double[] toUTM(int utmzone)
     {
-        IProjectedCoordinateSystem utm = ProjectedCoordinateSystem.WGS84_UTM(Math.abs(utmzone), lat < 0 ? false : true);
-        ICoordinateTransformation trans = ctfac.CreateFromCoordinateSystems(wgs84, utm);
-        Double[] pll = { lng, lat };
+        System.out.println(utmzone);
+        LatLon latLon = LatLon.fromDegrees(this.lat, this.lng);
+        UTMCoord utmCoord = UTMCoord.fromLatLon(latLon.latitude, latLon.longitude);
+
         // get leader utm coords
-        Double[] utmxy = trans.MathTransform.Transform(pll);
+        Double[] utmxy = {utmCoord.getEasting(), utmCoord.getNorthing()};
         return utmxy;
     }
 
     public static List<Double[]> ToUTM(int utmzone, List<PointLatLngAlt> list){
-        IProjectedCoordinateSystem utm = ProjectedCoordinateSystem.WGS84_UTM(Math.Abs(utmzone), list.get(0).lat < 0 ? false : true);
-        ICoordinateTransformation trans = ctfac.CreateFromCoordinateSystems(wgs84, utm);
+
+        System.out.println(utmzone);
 
         List<Double[]> data = new ArrayList<Double[]>();
 
         for (PointLatLngAlt dat : list){
-            Double[] aux = { dat.lng, dat.lat };
-            data.add( aux );
+            LatLon latLon = LatLon.fromDegrees(dat.lat, dat.lng);
+            UTMCoord utmCoord = UTMCoord.fromLatLon(latLon.latitude, latLon.longitude);
+
+            // get leader utm coords
+            Double[] utmxy = {utmCoord.getEasting(), utmCoord.getNorthing()};
+            data.add( utmxy );
         }
 
-        return trans.MathTransform.TransformList(data);
+        return data;
     }
 }
