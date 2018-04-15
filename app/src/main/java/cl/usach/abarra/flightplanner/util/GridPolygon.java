@@ -76,7 +76,7 @@ public class GridPolygon {
             Cx = Cx + ((vertices[i].longitude + vertices[i+1].longitude) * ((vertices[i].longitude * vertices[i+1].latitude) - (vertices[i+1].longitude * vertices[i].latitude)));
             Cy = Cy + ((vertices[i].latitude + vertices[i+1].latitude) * ((vertices[i].longitude * vertices[i+1].latitude) - (vertices[i+1].longitude * vertices[i].latitude)));
         }
-        double aux = (1/(6*this.area));
+        Double aux = (1/(6*this.area));
         Cx = aux * Cx;
         Cy = aux * Cy;
         this.center = new LatLng(Cy, Cx);
@@ -250,7 +250,7 @@ public class GridPolygon {
      * @param theta angle in radians
      * @return cosecant of theta.
      */
-    private double csc(double theta)
+    private Double csc(Double theta)
     {
         return 1.0 / Math.sin( theta );
     }
@@ -321,16 +321,16 @@ public class GridPolygon {
 
         //get start point middle
 
-        double x = area.midWidth();
-        double y = area.midHeight();
+        Double x = area.midWidth();
+        Double y = area.midHeight();
 
         addtomap(new UTMPos(x, y, utmzone),"Base");//no sirve de nada
 
         // get left extent
-        double xb1 = x;
-        double yb1 = y;
+        Double xb1 = x;
+        Double yb1 = y;
 
-        double[] changePos;
+        Double[] changePos;
         // to the left
         changePos = newpos( xb1,  yb1, angle - 90, diagdist / 2 + distance);
         xb1 = Double.valueOf(changePos[0]);
@@ -345,8 +345,8 @@ public class GridPolygon {
         addtomap(left, "left");
 
         // get right extent
-        double xb2 = x;
-        double yb2 = y;
+        Double xb2 = x;
+        Double yb2 = y;
         // to the right
         changePos = newpos( xb2,  yb2, angle + 90, diagdist / 2 + distance);
         xb2 = Double.valueOf(changePos[0]);
@@ -368,8 +368,8 @@ public class GridPolygon {
         while (lines < ((diagdist + distance * 2) / distance))
         {
             // copy the start point to generate the end point
-            double nx = Double.valueOf(x);
-            double ny = Double.valueOf(y);
+            Double nx = Double.valueOf(x);
+            Double ny = Double.valueOf(y);
             changePos = newpos( nx,  ny, angle, diagdist + distance*2);
 
             nx = Double.valueOf(changePos[0]);
@@ -402,8 +402,8 @@ public class GridPolygon {
         // cycle through our grid
         for (int a = 0; a < gridno; a++)
         {
-            double closestdistance = Double.MAX_VALUE;
-            double farestdistance = Double.MIN_VALUE;
+            Double closestdistance = Double.MAX_VALUE;
+            Double farestdistance = Double.MIN_VALUE;
 
             UTMPos closestpoint = new UTMPos(UTMPos.zero);
             UTMPos farestpoint = new UTMPos(UTMPos.zero);
@@ -527,7 +527,7 @@ public class GridPolygon {
         startposutm = findClosestPoint(startposutm, UTMPositions);
 
         // find closest line point to startpos
-        LatLngLine closest = findClosestLine(startposutm, grid, 0 /*Lane separation does not apply to starting point*/, angle);
+        LatLngLine closest = findClosestLine(startposutm, grid, 0.0 /*Lane separation does not apply to starting point*/, angle);
 
         UTMPos lastpnt;
 
@@ -551,7 +551,7 @@ public class GridPolygon {
             // for each line, check which end of the line is the next closest
             if (closest.p1.GetDistance(lastpnt) < closest.p2.GetDistance(lastpnt))
             {
-                UTMPos newstart = newpos(closest.p1, angle, -leadin);
+                UTMPos newstart = newpos(closest.p1, angle,(double)(-leadin));
                 newstart.tag = "S";
 
                 addtomap(newstart, "S");
@@ -567,11 +567,11 @@ public class GridPolygon {
                          d < (closest.p1.GetDistance(closest.p2));
                          d += spacing.intValue())
                     {
-                        double ax = closest.p1.x;
-                        double ay = closest.p1.y;
+                        Double ax = closest.p1.x;
+                        Double ay = closest.p1.y;
 
 
-                        changePos = newpos( ax,  ay, angle, d);
+                        changePos = newpos( ax,  ay, angle, (double)d);
 
                         ax = Double.valueOf(changePos[0]);
                         ay = Double.valueOf(changePos[1]);
@@ -602,7 +602,7 @@ public class GridPolygon {
             }
             else
             {
-                UTMPos newstart = newpos(closest.p2, angle, leadin);
+                UTMPos newstart = newpos(closest.p2, angle, (double)leadin);
                 newstart.tag = "S";
                 addtomap(newstart, "S");
                 ans.add(newstart.toLLA());
@@ -617,11 +617,11 @@ public class GridPolygon {
                          d < (closest.p1.GetDistance(closest.p2));
                          d += spacing.intValue())
                     {
-                        double ax = closest.p2.x;
-                        double ay = closest.p2.y;
+                        Double ax = closest.p2.x;
+                        Double ay = closest.p2.y;
 
 
-                        changePos = newpos( ax,  ay, angle, -d);
+                        changePos = newpos( ax,  ay, angle,(double) -d);
 
                         ax = Double.valueOf(changePos[0]);
                         ay = Double.valueOf(changePos[1]);
@@ -667,26 +667,26 @@ public class GridPolygon {
     }
 
     // polar to rectangular
-    private static double[] newpos(double x, double y, double bearing, double distance)
+    private static Double[] newpos(Double x, Double y, Double bearing, Double distance)
     {
-        double degN = 90 - bearing;
+        Double degN = 90 - bearing;
         if (degN < 0)
             degN += 360;
-        double nx = x + distance * Math.cos(degN * deg2rad);
-        double ny = y + distance * Math.sin(degN * deg2rad);
+        Double nx = x + distance * Math.cos(degN * deg2rad);
+        Double ny = y + distance * Math.sin(degN * deg2rad);
 
-        double[] ans = {nx, ny};
+        Double[] ans = {nx, ny};
         return ans;
     }
 
     // polar to rectangular
-    private static UTMPos newpos(UTMPos input, double bearing, double distance)
+    private static UTMPos newpos(UTMPos input, Double bearing, Double distance)
     {
-        double degN = 90 - bearing;
+        Double degN = 90 - bearing;
         if (degN < 0)
             degN += 360;
-        double x = input.x + distance * Math.cos(degN * deg2rad);
-        double y = input.y + distance * Math.sin(degN * deg2rad);
+        Double x = input.x + distance * Math.cos(degN * deg2rad);
+        Double y = input.y + distance * Math.sin(degN * deg2rad);
 
         return new UTMPos(x, y, input.zone);
     }
@@ -696,7 +696,7 @@ public class GridPolygon {
         if (UTMPos.size() == 0)
             return new Rect();
 
-        double minx, miny, maxx, maxy;
+        Double minx, miny, maxx, maxy;
 
         minx = maxx = UTMPos.get(0).x;
         miny = maxy = UTMPos.get(0).y;
@@ -735,15 +735,15 @@ public class GridPolygon {
     /// <returns></returns>
     private static UTMPos FindLineIntersection(UTMPos start1, UTMPos end1, UTMPos start2, UTMPos end2)
     {
-        double denom = ((end1.x - start1.x) * (end2.y - start2.y)) - ((end1.y - start1.y) * (end2.x - start2.x));
+        Double denom = ((end1.x - start1.x) * (end2.y - start2.y)) - ((end1.y - start1.y) * (end2.x - start2.x));
         //  AB & CD are parallel
-        if (denom == 0)
+        if (denom == 0.0d)
             return new UTMPos(UTMPos.zero);
-        double numer = ((start1.y - start2.y) * (end2.x - start2.x)) - ((start1.x - start2.x) * (end2.y - start2.y));
-        double r = numer / denom;
-        double numer2 = ((start1.y - start2.y) * (end1.x - start1.x)) - ((start1.x - start2.x) * (end1.y - start1.y));
-        double s = numer2 / denom;
-        if ((r < 0 || r > 1) || (s < 0 || s > 1))
+        Double numer = ((start1.y - start2.y) * (end2.x - start2.x)) - ((start1.x - start2.x) * (end2.y - start2.y));
+        Double r = numer / denom;
+        Double numer2 = ((start1.y - start2.y) * (end1.x - start1.x)) - ((start1.x - start2.x) * (end1.y - start1.y));
+        Double s = numer2 / denom;
+        if ((r < 0.0d || r > 1.0d) || (s < 0.0d || s > 1.0d))
             return new UTMPos(UTMPos.zero);
         // Find intersection point
         UTMPos result = new UTMPos();
@@ -763,16 +763,16 @@ public class GridPolygon {
     /// <returns></returns>
     public static UTMPos FindLineIntersectionExtension(UTMPos start1, UTMPos end1, UTMPos start2, UTMPos end2)
     {
-        double denom = ((end1.x - start1.x) * (end2.y - start2.y)) - ((end1.y - start1.y) * (end2.x - start2.x));
+        Double denom = ((end1.x - start1.x) * (end2.y - start2.y)) - ((end1.y - start1.y) * (end2.x - start2.x));
         //  AB & CD are parallel
         if (denom == 0)
             return new UTMPos(UTMPos.zero);
-        double numer = ((start1.y - start2.y) * (end2.x - start2.x)) -
+        Double numer = ((start1.y - start2.y) * (end2.x - start2.x)) -
                 ((start1.x - start2.x) * (end2.y - start2.y));
-        double r = numer / denom;
-        double numer2 = ((start1.y - start2.y) * (end1.x - start1.x)) -
+        Double r = numer / denom;
+        Double numer2 = ((start1.y - start2.y) * (end1.x - start1.x)) -
                 ((start1.x - start2.x) * (end1.y - start1.y));
-        double s = numer2 / denom;
+        Double s = numer2 / denom;
         if ((r < 0 || r > 1) || (s < 0 || s > 1))
         {
             // line intersection is outside our lines.
@@ -788,15 +788,15 @@ public class GridPolygon {
     private static UTMPos findClosestPoint(UTMPos start, List<UTMPos> list)
     {
         UTMPos answer = new UTMPos(UTMPos.zero);
-        double currentbest = Double.MAX_VALUE;
+        Double currentbest = Double.MAX_VALUE;
 
         for (UTMPos pnt : list)
         {
-            double dist1 = start.GetDistance(pnt);
+            Double dist1 = start.GetDistance(pnt);
 
-            if (dist1 < currentbest)
+            if (dist1.compareTo(currentbest) < 0)
             {
-                answer = pnt;
+                answer = new UTMPos(pnt);
                 currentbest = dist1;
             }
         }
@@ -805,25 +805,26 @@ public class GridPolygon {
     }
 
     // Add an angle while normalizing output in the range 0...360
-    private static double AddAngle(double angle, double degrees)
+    private static Double AddAngle(Double angle, Double degrees)
     {
         angle += degrees;
 
-        angle = angle % 360;
+        angle = angle % 360.0;
 
-        while (angle < 0)
+        while (angle < 0.0)
         {
-            angle += 360;
+            angle += 360.0;
         }
         return angle;
     }
 
-    private static LatLngLine findClosestLine(UTMPos start, List<LatLngLine> list, double minDistance, double angle)
+    private static LatLngLine findClosestLine(UTMPos start, List<LatLngLine> list, Double minDistance, Double angle)
     {
         // By now, just add 5.000 km to our lines so they are long enough to allow intersection
-        double METERS_TO_EXTEND = 5000000;
+        Double METERS_TO_EXTEND = 5000000.0;
 
-        double perperndicularOrientation = AddAngle(angle, 90);
+
+        Double perperndicularOrientation = AddAngle(angle, 90.0);
 
         // Calculation of a perpendicular line to the grid lines containing the "start" point
         /*
@@ -856,7 +857,7 @@ public class GridPolygon {
             intersectedPoints.put(p, line);
 
             // Calculate distances between interesected point and "start" (i.e. line and start)
-            double distance_p = start.GetDistance(p);
+            Double distance_p = start.GetDistance(p);
             if (!ordered_min_to_max.containsKey(distance_p))
                 ordered_min_to_max.put(distance_p, p);
         }
@@ -868,7 +869,7 @@ public class GridPolygon {
 
         // Lets select a line that is the closest to "start" point but "mindistance" away at least.
         // If we have only one line, return that line whatever the minDistance says
-        double key = Double.MAX_VALUE;
+        Double key = Double.MAX_VALUE;
         int i = 0;
         while (key == Double.MAX_VALUE && i < ordered_keys.size())
         {
@@ -914,8 +915,8 @@ public class GridPolygon {
             }
 
             if ((newPoint.y < p.y) == (p.y <= oldPoint.y)
-                    && ((double)p.x - (double)p1.x) * (double)(p2.y - p1.y)
-                    < ((double)p2.x - (double)p1.x) * (double)(p.y - p1.y))
+                    && ((Double)p.x - (Double)p1.x) * (Double)(p2.y - p1.y)
+                    < ((Double)p2.x - (Double)p1.x) * (Double)(p.y - p1.y))
             {
                 inside = !inside;
             }

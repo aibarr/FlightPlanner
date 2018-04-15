@@ -65,6 +65,7 @@ public class UTMPos implements Parcelable{
     public PointLatLngAlt toLLA()
     {
         System.out.println(this.toString());
+        if((this == UTMPos.zero) || this.x == 0.0 || this.y == 0.0) return new PointLatLngAlt(PointLatLngAlt.zero);
         LatLon latLon = UTMCoord.locationFromUTMCoord(Math.abs(this.zone), (zone <0 ? AVKey.SOUTH : AVKey.NORTH ), this.x, this.y, null );
 
         PointLatLngAlt ans = new PointLatLngAlt(latLon.latitude.degrees, latLon.longitude.degrees);

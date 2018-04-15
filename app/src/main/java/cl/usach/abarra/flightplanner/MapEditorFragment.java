@@ -579,7 +579,7 @@ public class MapEditorFragment extends Fragment {
                                             public void run() {
                                                 System.out.println("creando Poligono Grilla");
                                                 gridPolygon.setVertices(vertices);
-                                                gridPolygon.calculateGridMP(100.0,10.0,0.0,45.0, 0, 0, GridPolygon.StartPosition.Home, new PointLatLngAlt(-33.4258741,-70.6185903));
+                                                gridPolygon.calculateGridMP(100.0,10.0,0.0,120.0, 0, 0, GridPolygon.StartPosition.Home, new PointLatLngAlt(-33.4258741,-70.6185903));
                                                 ptsRoute.addAll(gridPolygon.getGrid());
                                             }
                                         });
@@ -605,7 +605,7 @@ public class MapEditorFragment extends Fragment {
                                         System.out.println("Entrado a Tarea");
                                         gridPolygon.setVertices(vertices);
                                         System.out.println("creando Poligono Grilla");
-                                        gridPolygon.calculateGridMP(100.0,10.0,0.0,45.0, 0, 0, GridPolygon.StartPosition.Home, new PointLatLngAlt(lastLocation.latitude,lastLocation.longitude));
+                                        gridPolygon.calculateGridMP(100.0,10.0,0.0,120.0, 0, 0, GridPolygon.StartPosition.Home, new PointLatLngAlt(lastLocation.latitude,lastLocation.longitude));
                                         System.out.println("calculando");
                                         ptsRoute.addAll(gridPolygon.getGrid());
                                         route.setPoints(ptsRoute);
