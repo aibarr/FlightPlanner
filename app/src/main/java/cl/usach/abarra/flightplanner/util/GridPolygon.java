@@ -303,7 +303,7 @@ public class GridPolygon {
 
         //utm position list
         List<UTMPos> UTMPositions = UTMPos.toList(PointLatLngAlt.ToUTM(utmzone, polygon), utmzone);
-        System.out.println(UTMPositions.toString());
+
 
         // close the loop if its not already
         if (UTMPositions.get(0) != UTMPositions.get(UTMPositions.size() - 1))
@@ -324,7 +324,7 @@ public class GridPolygon {
         double x = area.midWidth();
         double y = area.midHeight();
 
-        addtomap(new UTMPos(x, y, utmzone),"Base");
+        addtomap(new UTMPos(x, y, utmzone),"Base");//no sirve de nada
 
         // get left extent
         double xb1 = x;
