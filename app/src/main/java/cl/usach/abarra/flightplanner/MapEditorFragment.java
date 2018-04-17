@@ -102,6 +102,8 @@ public class MapEditorFragment extends Fragment {
     private Polyline route;
     private List<LatLng> ptsRoute;
     private List<Marker> markers;
+    private Marker homeMarker;
+    private MarkerOptions homeMarkerOpt;
     private int ptsCount;
     private PolylineOptions optRoute;
     private Float[] heights;
@@ -109,7 +111,7 @@ public class MapEditorFragment extends Fragment {
 
     private List<Waypoint> waypoints;
 
-    private Stack   undoStack;
+    private Stack  undoStack;
 
     private MarkerGenerator markerGenerator;
 
@@ -127,7 +129,7 @@ public class MapEditorFragment extends Fragment {
 
     private static final LatLng OFICINA = new LatLng(-33.4258741,-70.6185903);
 
-    private static final String API_KEY = "AIzaSyBITRYAdWiqqRk_lj_JeVFDDKG2degBZyE";
+    private static final String API_KEY = "AIzaSyDkSLeNFv1QoT8jTs8AROSxRPXS_9kJng4";
 
     private LatLng lastLocation;
 
@@ -155,6 +157,10 @@ public class MapEditorFragment extends Fragment {
     //Textos del fragment
     TextView statusBar;
     TextView distanceText;
+
+    //Para el calculo de la grilla
+    private Double gridOrientation;
+    private Double gridDistance = 10.0d;
 
     //Utilitarios del Bottom Sheet
     private LinearLayout bottomSheet;
@@ -201,6 +207,9 @@ public class MapEditorFragment extends Fragment {
 
         //Abrimos un generador de marcadores
         markerGenerator = new MarkerGenerator();
+
+        //iniciemos el marcador de Home
+        homeMarkerOpt = new MarkerOptions().draggable(false).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
 
         //Variables para el Bottom Sheet
         bottomSheet = (LinearLayout) getActivity().findViewById(R.id.bs_bottom_sheet);
@@ -268,6 +277,7 @@ public class MapEditorFragment extends Fragment {
 
                 @Override
                 public void onStatusChanged(String provider, int status, Bundle extras) {
+                    //TODO: Manejar en caso de que cambien los estados o la ubicación no esté disponible
 
 
                 }
@@ -517,7 +527,7 @@ public class MapEditorFragment extends Fragment {
 
                 orientationInput.setVisibility(EditText.VISIBLE);
                 orientationInput.setBackgroundColor(Color.GRAY);
-                orientationInput.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+
 
                 orientationInput.addTextChangedListener(new TextWatcher() {
                     @Override
@@ -532,15 +542,13 @@ public class MapEditorFragment extends Fragment {
 
                     @Override
                     public void afterTextChanged(Editable s) {
-                        System.out.println(s.toString());
-                        if(s != null &&!((Integer.parseInt(s.toString())>180)||(Integer.parseInt(s.toString())<0))){
-                            if(vertices != null && vertices.size()>2){
-
+                        if (!s.toString().isEmpty()){
+                            if(s != null && ((Double.parseDouble(s.toString())<=360)||(Double.parseDouble(s.toString())>=0))){
+                                gridOrientation = Double.parseDouble(s.toString());
+                            } else if (s != null && ((Double.parseDouble(s.toString())>360)||(Double.parseDouble(s.toString())<0))){
+                                gridOrientation = 45.0d;
                             }
-
-
                         }
-
                     }
                 });
 
@@ -571,15 +579,14 @@ public class MapEditorFragment extends Fragment {
 
                                         map.setOnMapClickListener(null);
                                         statusBar.setText("");
-                                        finishButton.setVisibility(View.GONE);
-                                        orientationInput.setVisibility(View.GONE);
+                                        finishButton.setVisibility(View.INVISIBLE);
+                                        orientationInput.setVisibility(View.INVISIBLE);
                                         buttonFlag  =  0;
                                         Thread addPoly = new Thread(new Runnable() {
                                             @Override
                                             public void run() {
-                                                System.out.println("creando Poligono Grilla");
                                                 gridPolygon.setVertices(vertices);
-                                                gridPolygon.calculateGridMP(100.0,10.0,0.0,120.0, 0, 0, GridPolygon.StartPosition.Home, new PointLatLngAlt(-33.4258741,-70.6185903));
+                                                gridPolygon.calculateGridMP(100.0,gridDistance,0.0,gridOrientation, 0, 0, GridPolygon.StartPosition.Home, new PointLatLngAlt(lastLocation.latitude,lastLocation.longitude));
                                                 ptsRoute.addAll(gridPolygon.getGrid());
                                             }
                                         });
@@ -602,24 +609,12 @@ public class MapEditorFragment extends Fragment {
                                         polygons.add(vertices);
                                         map.setOnMapClickListener(null);
                                         statusBar.setText("");
-                                        System.out.println("Entrado a Tarea");
                                         gridPolygon.setVertices(vertices);
-                                        System.out.println("creando Poligono Grilla");
-                                        gridPolygon.calculateGridMP(100.0,10.0,0.0,120.0, 0, 0, GridPolygon.StartPosition.Home, new PointLatLngAlt(lastLocation.latitude,lastLocation.longitude));
-                                        System.out.println("calculando");
+                                        gridPolygon.calculateGridMP(100.0,gridDistance,0.0,gridOrientation, 0, 0, GridPolygon.StartPosition.Home, new PointLatLngAlt(lastLocation.latitude,lastLocation.longitude));
                                         ptsRoute.addAll(gridPolygon.getGrid());
                                         route.setPoints(ptsRoute);
-                                        /*final Thread addPoly = new Thread(new Runnable() {
-                                            @Override
-                                            public void run() {
-
-                                            }
-                                        });
-                                        addPoly.start();*/
-
-                                        finishButton.setVisibility(View.GONE);
-                                        orientationInput.setVisibility(View.GONE);
-
+                                        finishButton.setVisibility(View.INVISIBLE);
+                                        orientationInput.setVisibility(View.INVISIBLE);
                                     }
                                 })
                                 .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
@@ -639,6 +634,7 @@ public class MapEditorFragment extends Fragment {
         clear.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                //Limpio el mapa
                 map.setOnMapClickListener(null);
                 map.clear();
                 route = map.addPolyline(optRoute);
@@ -646,7 +642,11 @@ public class MapEditorFragment extends Fragment {
                 waypoints.clear();
                 ptsCount = 0;
                 markers.clear();
+
+                //desactivo cosas
+                finishButton.setVisibility(Button.INVISIBLE);
                 undo.setVisibility(Button.INVISIBLE);
+                orientationInput.setVisibility(EditText.INVISIBLE);
                 calculateDistance();
             }
         });
@@ -657,15 +657,19 @@ public class MapEditorFragment extends Fragment {
         homeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (lastLocation!=null && map!=null){
+                if (map != null){
+                    if (lastLocation==null){
+                        lastLocation = OFICINA;
+                    }
                     System.out.println("Last Location is" + lastLocation.toString());
-                    map.addMarker(new MarkerOptions().position(lastLocation));
-                } else {
-                    lastLocation = OFICINA;
+                    if (homeMarker != null){
+                        homeMarker.setPosition(lastLocation);
+                    }else{
+                        homeMarker = map.addMarker(homeMarkerOpt.position(lastLocation));
+                    }
                 }
             }
         });
-
         // Inflate the layout for this fragment
         return rootView;
     }

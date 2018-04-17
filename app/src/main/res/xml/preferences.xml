@@ -4,15 +4,23 @@
     <PreferenceCategory android:title="Generales">
         <EditTextPreference
             android:defaultValue="/"
-            android:key="/"
+            android:key="default_Directory"
             android:title="Directorio de Almacenamiento">
-
         </EditTextPreference>
-        <ListPreference android:title="Unidad de Distancia">
+        <ListPreference
+            android:defaultValue="0"
+            android:entries="@array/measure_units"
+            android:entryValues="@array/measure_units_values"
+            android:key="distance_units"
+            android:title="Unidad de Distancia">
 
         </ListPreference>
-        <ListPreference android:title="Unidad de Velocidad">
-
+        <ListPreference
+            android:key="speed_units"
+            android:entries="@array/speed_units"
+            android:title="Unidad de Velocidad"
+            android:entryValues="@array/speed_units_values"
+            android:defaultValue="0">
         </ListPreference>
 
 
@@ -21,6 +29,19 @@
 
     </PreferenceCategory>
     <PreferenceCategory android:title="Polígono" >
+        <EditTextPreference
+            android:title="Distancia entre lineas"
+            android:key="default_distance"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:defaultValue="10.0"
+            />
+        <EditTextPreference
+            android:defaultValue="45.0"
+            android:key="default_angle"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Angulo por Defecto" />
 
     </PreferenceCategory>
 </PreferenceScreen>
