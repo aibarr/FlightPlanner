@@ -26,6 +26,13 @@
 
     </PreferenceCategory>
     <PreferenceCategory android:title="Planificación"  >
+        <EditTextPreference
+            android:title="Altura minima desde el suelo"
+            android:key="min_height"
+            android:defaultValue="50.0"
+            android:selectAllOnFocus="true"
+            android:inputType="numberDecimal"
+            android:singleLine="true"/>
 
     </PreferenceCategory>
     <PreferenceCategory android:title="Polígono" >
@@ -35,13 +42,15 @@
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:defaultValue="10.0"
+            android:inputType="numberDecimal"
             />
         <EditTextPreference
             android:defaultValue="45.0"
             android:key="default_angle"
             android:selectAllOnFocus="true"
             android:singleLine="true"
-            android:title="Angulo por Defecto" />
+            android:title="Angulo por Defecto"
+            android:inputType="numberDecimal"/>
 
     </PreferenceCategory>
 </PreferenceScreen>

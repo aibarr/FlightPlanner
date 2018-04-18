@@ -71,37 +71,6 @@ public class Waypoint implements Parcelable {
         height = in.readDouble();
     }
 
-    public int getUTMZone(){
-        int zone = (int)((position.longitude - -186.0) / 6.0);
-        if (position.latitude < 0) zone *= -1;
-        return zone;
-    }
-
-//    public Double[] toUTM(){
-//        return new Double[];
-//    }
-
-    public Waypoint newPosition(Double bearing, Double distance){
-        Double earthRadius = 6378100.0;
-
-        Double lat1 = deg2rad * (this.position.latitude);
-        Double lon1 = deg2rad * (this.position.longitude);
-        Double brng = deg2rad * (bearing);
-        Double dr = distance / earthRadius;
-
-        Double lat2 = Math.asin(Math.sin(lat1) * Math.cos(dr) +
-                Math.cos(lat1) * Math.sin(dr) * Math.cos(brng));
-        Double lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(dr) * Math.cos(lat1),
-                Math.cos(dr) - Math.sin(lat1) * Math.sin(lat2));
-
-        Double latout = rad2deg * (lat2);
-        Double lonout = rad2deg * (lon2);
-
-        return new Waypoint(new LatLng(latout, lonout), 0, 0.0, 'p');
-
-
-    }
-
     public static final Creator<Waypoint> CREATOR = new Creator<Waypoint>() {
         @Override
         public Waypoint createFromParcel(Parcel in) {

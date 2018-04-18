@@ -1,5 +1,6 @@
 package cl.usach.abarra.flightplanner;
 
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.location.Location;
@@ -7,6 +8,7 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Parcelable;
+import android.preference.PreferenceManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.app.AlertDialog;
@@ -173,6 +175,9 @@ public class MapEditorFragment extends Fragment {
     private EditText etSpeed;
     private EditText etHeight;
 
+    //otros
+    SharedPreferences preferences;
+
     public MapEditorFragment() {
         // Required empty public constructor
     }
@@ -200,6 +205,13 @@ public class MapEditorFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        //obtengamos las preferencias
+        preferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
+
+
+        gridOrientation = Double.valueOf(preferences.getString(SettingsFragment.DEFAULT_ANGLE, "45.0"));
+        gridDistance = Double.valueOf(preferences.getString(SettingsFragment.DEFAULT_DISTANCE, "10.0"));
         ptsRoute= new ArrayList<LatLng>();
         undoStack = new Stack();
         markers = new ArrayList<Marker>();
@@ -482,8 +494,6 @@ public class MapEditorFragment extends Fragment {
 
                 final GridPolygon gridPolygon = new GridPolygon();
 
-                statusBar.setText("Creando Poligono");
-
                 //Lista de vertices para el polígono
                 final ArrayList<LatLng> vertices = new ArrayList<LatLng>();
 
@@ -493,9 +503,7 @@ public class MapEditorFragment extends Fragment {
 
                 map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
                     PolygonOptions tempPolygonOptions = new PolygonOptions();
-
                     Polygon tempPolygon;
-
                     @Override
                     public void onMapClick(LatLng latLng) {
 
@@ -526,8 +534,7 @@ public class MapEditorFragment extends Fragment {
                 });
 
                 orientationInput.setVisibility(EditText.VISIBLE);
-                orientationInput.setBackgroundColor(Color.GRAY);
-
+                orientationInput.setBackgroundColor(Color.WHITE);
 
                 orientationInput.addTextChangedListener(new TextWatcher() {
                     @Override
@@ -552,7 +559,6 @@ public class MapEditorFragment extends Fragment {
                     }
                 });
 
-
                 finishButton.setVisibility(Button.VISIBLE);
                 finishButton.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -571,6 +577,11 @@ public class MapEditorFragment extends Fragment {
 
                         switch (vertices.size()){
                             case 0:
+                                map.setOnMapClickListener(null);
+                                statusBar.setText("");
+                                finishButton.setVisibility(View.INVISIBLE);
+                                orientationInput.setVisibility(View.INVISIBLE);
+                                buttonFlag  =  0;
                                 break;
                             case 1:
                                 builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener(){
@@ -582,7 +593,7 @@ public class MapEditorFragment extends Fragment {
                                         finishButton.setVisibility(View.INVISIBLE);
                                         orientationInput.setVisibility(View.INVISIBLE);
                                         buttonFlag  =  0;
-                                        Thread addPoly = new Thread(new Runnable() {
+                                       /* Thread addPoly = new Thread(new Runnable() {
                                             @Override
                                             public void run() {
                                                 gridPolygon.setVertices(vertices);
@@ -590,7 +601,7 @@ public class MapEditorFragment extends Fragment {
                                                 ptsRoute.addAll(gridPolygon.getGrid());
                                             }
                                         });
-                                        addPoly.start();
+                                        addPoly.start();*/
                                     }
                                 })
                                 .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
@@ -601,6 +612,7 @@ public class MapEditorFragment extends Fragment {
                                 })
                                 .show();
                                 break;
+
                             default:
                                 builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener(){
                                     @Override
@@ -611,7 +623,20 @@ public class MapEditorFragment extends Fragment {
                                         statusBar.setText("");
                                         gridPolygon.setVertices(vertices);
                                         gridPolygon.calculateGridMP(100.0,gridDistance,0.0,gridOrientation, 0, 0, GridPolygon.StartPosition.Home, new PointLatLngAlt(lastLocation.latitude,lastLocation.longitude));
-                                        ptsRoute.addAll(gridPolygon.getGrid());
+                                        List<LatLng> auxL = new ArrayList<LatLng>(gridPolygon.getGrid());
+                                        List<LatLng> removal = new ArrayList<LatLng>();
+                                        for (LatLng point : auxL){
+                                            if (!(point.latitude == 0.0 && point.longitude == 0.0)){
+                                                Waypoint auxW = new Waypoint(point, 100, 0, 'w');
+                                                getElevation(auxW);
+                                                waypoints.add(auxW);
+                                                markers.add(map.addMarker(new MarkerOptions().position(point)));
+                                            }
+                                            else removal.add(point);
+                                        }
+                                        auxL.removeAll(removal);
+                                        removal.clear();
+                                        ptsRoute.addAll(auxL);
                                         route.setPoints(ptsRoute);
                                         finishButton.setVisibility(View.INVISIBLE);
                                         orientationInput.setVisibility(View.INVISIBLE);
@@ -667,6 +692,7 @@ public class MapEditorFragment extends Fragment {
                     }else{
                         homeMarker = map.addMarker(homeMarkerOpt.position(lastLocation));
                     }
+                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(lastLocation, 17));
                 }
             }
         });
@@ -809,7 +835,7 @@ public class MapEditorFragment extends Fragment {
     }
 
     private boolean loadPlan(PlanArchiver planLoader){
-        waypoints = new ArrayList<Waypoint>(planLoader.getWaypoints());
+        waypoints = new ArrayList<>(planLoader.getWaypoints());
         route = map.addPolyline(optRoute);
         for (Waypoint waypoint: waypoints){
             ptsRoute.add(waypoint.getPosition());
@@ -879,7 +905,19 @@ public class MapEditorFragment extends Fragment {
 
     private void calculateDistance(){
         if (distanceText != null){
-            distanceText.setText("Distancia: " + String.format( "%.2f", SphericalUtil.computeLength(ptsRoute) ) + "(m)");
+            int measureUnit = preferences.getInt(SettingsFragment.DEFAULT_UNITS, 0 );
+            switch (measureUnit){
+                case 0:
+                    distanceText.setText("Distancia: " + String.format( "%.2f", SphericalUtil.computeLength(ptsRoute) ) + "(m)");
+                    break;
+                case 1:
+                    distanceText.setText("Distancia: " + String.format( "%.2f", SphericalUtil.computeLength(ptsRoute)/1000 ) + "(km)");
+                    break;
+                case 2:
+                    break;
+                default:
+            }
+
         }
     }
 
@@ -901,7 +939,7 @@ public class MapEditorFragment extends Fragment {
                                     JSONObject result = results.getJSONObject(0);
                                     Double elevation = result.getDouble("elevation");
 
-                                    waypoint.setHeight(elevation);
+                                    waypoint.setHeight(elevation+ Double.valueOf(preferences.getString("min_height", "15.0")));
 
                                     toast = Toast.makeText(getContext(), elevation.toString(), Toast.LENGTH_LONG );
                                     toast.show();
@@ -927,6 +965,10 @@ public class MapEditorFragment extends Fragment {
                     }
                 });
         queue.add(jsObjRequest);
+    }
+
+    private void addPoint(GoogleMap map, int pointClass){
+
     }
 
     @Override

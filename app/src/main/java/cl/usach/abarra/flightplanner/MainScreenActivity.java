@@ -134,7 +134,7 @@ public class MainScreenActivity extends AppCompatActivity
         } else if (id == R.id.settings) {
             selectedItem = id;
             getSupportActionBar().setTitle("Ajustes");
-            settingsFragment settingsFragment = new settingsFragment();
+            SettingsFragment settingsFragment = new SettingsFragment();
             getSupportFragmentManager().beginTransaction().replace(R.id.main_container, settingsFragment).commit();
         } else if (id == R.id.plan_settings) {
 

@@ -6,18 +6,22 @@ import android.support.v7.preference.PreferenceFragmentCompat;
 
 
 
-public class settingsFragment extends PreferenceFragmentCompat {
+public class SettingsFragment extends PreferenceFragmentCompat {
+
+    public static final String DEFAULT_DISTANCE = "default_distance";
+    public static final String DEFAULT_ANGLE = "default_angle";
+    public static final String DEFAULT_UNITS = "distance_units";
 
 
     private OnSettingsInteractionListener mListener;
 
-    public settingsFragment() {
+    public SettingsFragment() {
         // Required empty public constructor
     }
 
 
-    public static settingsFragment newInstance() {
-        settingsFragment fragment = new settingsFragment();
+    public static SettingsFragment newInstance() {
+        SettingsFragment fragment = new SettingsFragment();
         Bundle args = new Bundle();
         fragment.setArguments(args);
         return fragment;

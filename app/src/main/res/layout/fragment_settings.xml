@@ -2,7 +2,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="cl.usach.abarra.flightplanner.settingsFragment">
+    tools:context="cl.usach.abarra.flightplanner.SettingsFragment">
     <ListView
         android:id="@+id/settings_list"
         android:layout_width="match_parent"
