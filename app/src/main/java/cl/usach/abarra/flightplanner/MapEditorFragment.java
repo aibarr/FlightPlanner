@@ -131,7 +131,7 @@ public class MapEditorFragment extends Fragment {
 
     private static final LatLng OFICINA = new LatLng(-33.4258741,-70.6185903);
 
-    private static final String API_KEY = "AIzaSyDkSLeNFv1QoT8jTs8AROSxRPXS_9kJng4";
+    private static final String API_KEY = "AIzaSyBITRYAdWiqqRk_lj_JeVFDDKG2degBZyE";
 
     private LatLng lastLocation;
 
@@ -379,6 +379,7 @@ public class MapEditorFragment extends Fragment {
 
         statusBar = (TextView) rootView.findViewById(R.id.status_barr);
         distanceText = (TextView) rootView.findViewById(R.id.distance_text);
+        calculateDistance();
 
 
         //Obteniendo el mapa
@@ -905,15 +906,15 @@ public class MapEditorFragment extends Fragment {
 
     private void calculateDistance(){
         if (distanceText != null){
-            int measureUnit = preferences.getInt(SettingsFragment.DEFAULT_UNITS, 0 );
+            String measureUnit = preferences.getString(SettingsFragment.DEFAULT_UNITS, "0" );
             switch (measureUnit){
-                case 0:
+                case "0":
                     distanceText.setText("Distancia: " + String.format( "%.2f", SphericalUtil.computeLength(ptsRoute) ) + "(m)");
                     break;
-                case 1:
+                case "1":
                     distanceText.setText("Distancia: " + String.format( "%.2f", SphericalUtil.computeLength(ptsRoute)/1000 ) + "(km)");
                     break;
-                case 2:
+                case "2":
                     break;
                 default:
             }

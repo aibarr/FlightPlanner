@@ -6,11 +6,14 @@ import android.os.Parcelable;
 
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import cl.usach.abarra.flightplanner.util.GridPolygon;
@@ -18,15 +21,24 @@ import cl.usach.abarra.flightplanner.util.PointLatLngAlt;
 
 public class FlightPolygon implements Parcelable{
     private List<LatLng> vertices;
-    private Polyline polyline;
+    private Polyline innerRoute;
     private PolylineOptions lineOptions = new PolylineOptions().color(Color.GREEN);
     private Polygon polygon;
     private PolygonOptions options = new PolygonOptions().strokeColor(Color.RED).strokeWidth(5);
 
     private GridPolygon grid;
 
+    private List<Marker> mVertices;
+    private List<Marker> mGrid;
+
+    MarkerOptions mVerOptions;
+    MarkerOptions mGridOptions;
+
     public FlightPolygon(List<LatLng> vertices) {
         this.vertices = vertices;
+        mGrid = new ArrayList<Marker>();
+        mVertices = new ArrayList<Marker>();
+        mVerOptions = new MarkerOptions();
     }
 
 
@@ -75,18 +87,35 @@ public class FlightPolygon implements Parcelable{
 
     void addPoint (LatLng point, GoogleMap map){
         this.vertices.add(point);
+        this.mVertices.add(map.addMarker(mVerOptions.position(point)));
         if(this.vertices.size()>2) this.addToMap(map);
     }
 
     void removePoint (LatLng point, GoogleMap map){
+        int ptnIndex = this.vertices.indexOf(point);
+        this.mVertices.get(ptnIndex).remove();
+        this.mVertices.remove(ptnIndex);
         this.vertices.remove(point);
         if (this.vertices.size()<3) this.removeFromMap();
     }
 
-    private void addGrid (GoogleMap map){
+    private void addGrid (GoogleMap map, Double distance, Double angle, GridPolygon.StartPosition startpos, PointLatLngAlt homeLocation){
         this.grid = new GridPolygon();
         this.grid.setVertices(this.vertices);
-        this.grid.calculateGridMP(100.0, 10.0, 0.0, 45.0, 0,0, GridPolygon.StartPosition.Home, new PointLatLngAlt(0.0,0.0));
+        //calculamos la grilla
+        this.grid.calculateGridMP(100.0, distance, 0.0, angle, 0,0, startpos, homeLocation);
+        List<LatLng> auxL = new ArrayList<LatLng>(this.grid.getGrid());
+        List<LatLng> removal = new ArrayList<LatLng>();
+        //añadir marcadores al mapa
+        for (LatLng point : auxL){
+            if (!(point.latitude == 0.0 && point.longitude == 0.0)){
+                mGrid.add(map.addMarker(mGridOptions.position(point)));
+            }
+            else removal.add(point);
+        }
+        auxL.removeAll(removal);
+        //añado la grilla
+        innerRoute = map.addPolyline(lineOptions.addAll(auxL));
     }
 
 }
