@@ -8,6 +8,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.PatternItem;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
@@ -22,7 +23,7 @@ import cl.usach.abarra.flightplanner.util.PointLatLngAlt;
 public class FlightPolygon implements Parcelable{
     private List<LatLng> vertices;
     private Polyline innerRoute;
-    private PolylineOptions lineOptions = new PolylineOptions().color(Color.GREEN);
+    private PolylineOptions lineOptions = new PolylineOptions().color(Color.GREEN).width(1);
     private Polygon polygon;
     private PolygonOptions options = new PolygonOptions().strokeColor(Color.RED).strokeWidth(5);
 
@@ -33,6 +34,17 @@ public class FlightPolygon implements Parcelable{
 
     MarkerOptions mVerOptions;
     MarkerOptions mGridOptions;
+
+    public FlightPolygon(){
+        //TODO: configurar los marcadores
+
+        this.vertices = new ArrayList<LatLng>();
+        mGrid = new ArrayList<Marker>();
+        mVertices = new ArrayList<Marker>();
+        mVerOptions = new MarkerOptions();
+        mGrid = new ArrayList<>();
+        mGridOptions = new MarkerOptions();
+    }
 
     public FlightPolygon(List<LatLng> vertices) {
         this.vertices = vertices;
@@ -70,28 +82,33 @@ public class FlightPolygon implements Parcelable{
         dest.writeParcelable(options, flags);
     }
 
-    void addToMap (GoogleMap map){
+    public List<LatLng> getGrid() {
+        return this.grid.getGrid();
+    }
+
+    private void addToMap (GoogleMap map){
         if (this.vertices.size() > 2){
             if (this.polygon != null){
-                polygon.setPoints(this.vertices);
+                this.polygon.setPoints(this.vertices);
             }else{
                 this.polygon = map.addPolygon(this.options.addAll(this.vertices));
             }
         }
     }
 
-    void removeFromMap (){
+    private void removeFromMap (){
         this.polygon.remove();
         this.polygon = null;
+        //TODO: remover grilla y marcadores
     }
 
-    void addPoint (LatLng point, GoogleMap map){
+    public void addPoint (LatLng point, GoogleMap map){
         this.vertices.add(point);
         this.mVertices.add(map.addMarker(mVerOptions.position(point)));
         if(this.vertices.size()>2) this.addToMap(map);
     }
 
-    void removePoint (LatLng point, GoogleMap map){
+    public void removePoint (LatLng point, GoogleMap map){
         int ptnIndex = this.vertices.indexOf(point);
         this.mVertices.get(ptnIndex).remove();
         this.mVertices.remove(ptnIndex);
@@ -99,7 +116,7 @@ public class FlightPolygon implements Parcelable{
         if (this.vertices.size()<3) this.removeFromMap();
     }
 
-    private void addGrid (GoogleMap map, Double distance, Double angle, GridPolygon.StartPosition startpos, PointLatLngAlt homeLocation){
+    public void addGrid (GoogleMap map, Double distance, Double angle, GridPolygon.StartPosition startpos, PointLatLngAlt homeLocation){
         this.grid = new GridPolygon();
         this.grid.setVertices(this.vertices);
         //calculamos la grilla
@@ -114,8 +131,13 @@ public class FlightPolygon implements Parcelable{
             else removal.add(point);
         }
         auxL.removeAll(removal);
+
         //añado la grilla
         innerRoute = map.addPolyline(lineOptions.addAll(auxL));
+    }
+
+    public int size(){
+        return this.vertices.size();
     }
 
 }

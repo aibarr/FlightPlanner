@@ -29,6 +29,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -39,6 +40,7 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import java.util.ArrayList;
 import java.util.List;
 
+import cl.usach.abarra.flightplanner.model.FlightPolygon;
 import cl.usach.abarra.flightplanner.model.Waypoint;
 import cl.usach.abarra.flightplanner.util.MarkerGenerator;
 
@@ -55,7 +57,7 @@ public class MapPlannerFragment extends Fragment {
 
     //Datos a mostrar
     private List<LatLng> ptsRoute;
-    private List<Polygon> polygonList;
+    private List<FlightPolygon> polygonList;
 
     private List<Waypoint> waypoints;
 
@@ -246,6 +248,10 @@ public class MapPlannerFragment extends Fragment {
             public void onMapReady(GoogleMap mMap) {
                 System.out.println("Mapa Listo!");
                 googleMap = mMap;
+                UiSettings mapSettings = googleMap.getUiSettings();
+                mapSettings.setMapToolbarEnabled(false);
+                mapSettings.setRotateGesturesEnabled(false);
+                mapSettings.setTiltGesturesEnabled(false);
                 googleMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
                 googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(target,zoom));
 

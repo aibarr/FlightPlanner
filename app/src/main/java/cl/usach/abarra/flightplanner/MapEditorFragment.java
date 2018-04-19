@@ -79,6 +79,7 @@ import java.util.Map;
 import java.util.Stack;
 
 
+import cl.usach.abarra.flightplanner.model.FlightPolygon;
 import cl.usach.abarra.flightplanner.util.GridPolygon;
 import cl.usach.abarra.flightplanner.util.MarkerGenerator;
 import cl.usach.abarra.flightplanner.util.PlanArchiver;
@@ -112,6 +113,7 @@ public class MapEditorFragment extends Fragment {
     private Float[] speeds;
 
     private List<Waypoint> waypoints;
+    private List<FlightPolygon> flightPolygons;
 
     private Stack  undoStack;
 
@@ -215,7 +217,7 @@ public class MapEditorFragment extends Fragment {
         ptsRoute= new ArrayList<LatLng>();
         undoStack = new Stack();
         markers = new ArrayList<Marker>();
-        polygons = new ArrayList<ArrayList<LatLng>>();
+        flightPolygons = new ArrayList<FlightPolygon>();
 
         //Abrimos un generador de marcadores
         markerGenerator = new MarkerGenerator();
@@ -493,47 +495,18 @@ public class MapEditorFragment extends Fragment {
                 //Seteamos Flag para avisar que estoy creando un polígono
                 buttonFlag = 2;
 
-                final GridPolygon gridPolygon = new GridPolygon();
-
-                //Lista de vertices para el polígono
-                final ArrayList<LatLng> vertices = new ArrayList<LatLng>();
+                final FlightPolygon polygon = new FlightPolygon();
 
                 if  (route==null){
                     route = map.addPolyline(optRoute = new PolylineOptions());
                 }
 
                 map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
-                    PolygonOptions tempPolygonOptions = new PolygonOptions();
-                    Polygon tempPolygon;
                     @Override
                     public void onMapClick(LatLng latLng) {
-
-                        System.out.println("toque en "+latLng.toString()+"equivalente a X en "+latLng.latitude+"e Y en "+ latLng.longitude);
-
-                        Marker marker = map.addMarker(new MarkerOptions().position(latLng));
-                        markers.add(marker);
-                        undoStack.push(POLYGON_POINT);
-                        vertices.add(latLng);
-                        if (vertices.size()>2){
-                            if(tempPolygon==null){
-                                tempPolygon = map.addPolygon(tempPolygonOptions.addAll(vertices).strokeColor(0xff385aaf));
-                                if (!polygonList.isEmpty()){
-                                    polygonList.remove(polygonList.size()-1);
-                                }
-                                polygonList.add(tempPolygon);
-                            }else {
-                                tempPolygon.setPoints(vertices);
-                                if (!polygonList.isEmpty()){
-                                    polygonList.remove(polygonList.size()-1);
-                                }
-                                polygonList.add(tempPolygon);
-                            }
-
-                        }
-
+                        polygon.addPoint(latLng, map);
                     }
                 });
-
                 orientationInput.setVisibility(EditText.VISIBLE);
                 orientationInput.setBackgroundColor(Color.WHITE);
 
@@ -564,7 +537,6 @@ public class MapEditorFragment extends Fragment {
                 finishButton.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(final View v) {
-
                         AlertDialog.Builder builder;
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                             builder = new AlertDialog.Builder(getActivity(), android.R.style.Theme_Material_Dialog_Alert);
@@ -576,9 +548,10 @@ public class MapEditorFragment extends Fragment {
                                 .setMessage("Tiene un polígono sin completar. ¿Dejar de dibujar polígono actual?")
                                 .setIcon(android.R.drawable.ic_dialog_alert);
 
-                        switch (vertices.size()){
+                        switch (polygon.size()){
                             case 0:
                                 map.setOnMapClickListener(null);
+                                //TODO:Remove polygon from map
                                 statusBar.setText("");
                                 finishButton.setVisibility(View.INVISIBLE);
                                 orientationInput.setVisibility(View.INVISIBLE);
@@ -588,21 +561,11 @@ public class MapEditorFragment extends Fragment {
                                 builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener(){
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
-
                                         map.setOnMapClickListener(null);
                                         statusBar.setText("");
                                         finishButton.setVisibility(View.INVISIBLE);
                                         orientationInput.setVisibility(View.INVISIBLE);
                                         buttonFlag  =  0;
-                                       /* Thread addPoly = new Thread(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                gridPolygon.setVertices(vertices);
-                                                gridPolygon.calculateGridMP(100.0,gridDistance,0.0,gridOrientation, 0, 0, GridPolygon.StartPosition.Home, new PointLatLngAlt(lastLocation.latitude,lastLocation.longitude));
-                                                ptsRoute.addAll(gridPolygon.getGrid());
-                                            }
-                                        });
-                                        addPoly.start();*/
                                     }
                                 })
                                 .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
@@ -619,26 +582,11 @@ public class MapEditorFragment extends Fragment {
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
                                         buttonFlag  =  0;
-                                        polygons.add(vertices);
+                                        flightPolygons.add(polygon);
                                         map.setOnMapClickListener(null);
                                         statusBar.setText("");
-                                        gridPolygon.setVertices(vertices);
-                                        gridPolygon.calculateGridMP(100.0,gridDistance,0.0,gridOrientation, 0, 0, GridPolygon.StartPosition.Home, new PointLatLngAlt(lastLocation.latitude,lastLocation.longitude));
-                                        List<LatLng> auxL = new ArrayList<LatLng>(gridPolygon.getGrid());
-                                        List<LatLng> removal = new ArrayList<LatLng>();
-                                        for (LatLng point : auxL){
-                                            if (!(point.latitude == 0.0 && point.longitude == 0.0)){
-                                                Waypoint auxW = new Waypoint(point, 100, 0, 'w');
-                                                getElevation(auxW);
-                                                waypoints.add(auxW);
-                                                markers.add(map.addMarker(new MarkerOptions().position(point)));
-                                            }
-                                            else removal.add(point);
-                                        }
-                                        auxL.removeAll(removal);
-                                        removal.clear();
-                                        ptsRoute.addAll(auxL);
-                                        route.setPoints(ptsRoute);
+                                        polygon.addGrid(map ,gridDistance, gridOrientation, GridPolygon.StartPosition.Home, new PointLatLngAlt(lastLocation.latitude,lastLocation.longitude));
+                                        ptsRoute.addAll(polygon.getGrid());
                                         finishButton.setVisibility(View.INVISIBLE);
                                         orientationInput.setVisibility(View.INVISIBLE);
                                     }
@@ -923,9 +871,7 @@ public class MapEditorFragment extends Fragment {
     }
 
     private final void getElevation(final Waypoint waypoint){
-
         String url = "https://maps.googleapis.com/maps/api/elevation/json?locations="+ waypoint.getPosition().latitude+","+waypoint.getPosition().longitude+"&key="+API_KEY;
-
         RequestQueue queue = Volley.newRequestQueue(getContext());
         JsonObjectRequest jsObjRequest = new JsonObjectRequest
                 (Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
@@ -949,9 +895,7 @@ public class MapEditorFragment extends Fragment {
                                     toast = Toast.makeText(getContext(), "Solicitud Denegada", Toast.LENGTH_LONG );
                                     toast.show();
                                     break;
-
                             }
-
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
