@@ -6,11 +6,9 @@ import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.os.AsyncTask;
 import android.os.Parcelable;
 import android.preference.PreferenceManager;
 import android.support.v4.app.ActivityCompat;
-import android.support.v7.app.AppCompatActivity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -58,7 +56,6 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
-import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.maps.android.SphericalUtil;
 
@@ -66,19 +63,13 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Stack;
 
 
+import cl.usach.abarra.flightplanner.model.FlightLine;
 import cl.usach.abarra.flightplanner.model.FlightPolygon;
 import cl.usach.abarra.flightplanner.util.GridPolygon;
 import cl.usach.abarra.flightplanner.util.MarkerGenerator;
@@ -102,18 +93,17 @@ public class MapEditorFragment extends Fragment {
     //Variables globales para el mapa, la ruta de vuelo (route)
     private MapView mapEditorView;
     private GoogleMap map;
-    private Polyline route;
-    private List<LatLng> ptsRoute;
-    private List<Marker> markers;
+
+    List<FlightLine> fLines;
+    private List<FlightPolygon> fPolygons;
+
     private Marker homeMarker;
     private MarkerOptions homeMarkerOpt;
     private int ptsCount;
-    private PolylineOptions optRoute;
     private Float[] heights;
     private Float[] speeds;
 
     private List<Waypoint> waypoints;
-    private List<FlightPolygon> flightPolygons;
 
     private Stack  undoStack;
 
@@ -214,13 +204,10 @@ public class MapEditorFragment extends Fragment {
 
         gridOrientation = Double.valueOf(preferences.getString(SettingsFragment.DEFAULT_ANGLE, "45.0"));
         gridDistance = Double.valueOf(preferences.getString(SettingsFragment.DEFAULT_DISTANCE, "10.0"));
-        ptsRoute= new ArrayList<LatLng>();
         undoStack = new Stack();
-        markers = new ArrayList<Marker>();
-        flightPolygons = new ArrayList<FlightPolygon>();
+        fPolygons = new ArrayList<FlightPolygon>();
+        fLines = new ArrayList<FlightLine>();
 
-        //Abrimos un generador de marcadores
-        markerGenerator = new MarkerGenerator();
 
         //iniciemos el marcador de Home
         homeMarkerOpt = new MarkerOptions().draggable(false).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
@@ -250,7 +237,7 @@ public class MapEditorFragment extends Fragment {
             waypoints = bundle.getParcelableArrayList("waypoints");
             if (waypoints!= null){
                 for (Waypoint waypoint : waypoints){
-                    ptsRoute.add(waypoint.getPosition());
+                    //ptsRoute.add(waypoint.getPosition());
                     ptsCount++;
                 }
             }else{
@@ -267,7 +254,7 @@ public class MapEditorFragment extends Fragment {
             waypoints = saved.getParcelableArrayList("waypoints");
             if (waypoints != null){
                 for (Waypoint waypoint: waypoints){
-                    ptsRoute.add(waypoint.getPosition());
+                    //ptsRoute.add(waypoint.getPosition());
                 }
             }else{
                 waypoints = new ArrayList<Waypoint>();
@@ -323,8 +310,9 @@ public class MapEditorFragment extends Fragment {
             case R.id.save_plan:
                 permissionCheck = ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE);
                 if (permissionCheck == PackageManager.PERMISSION_GRANTED){
-                    if (ptsRoute!=null && ptsRoute.size()>0){
-                        PlanArchiver planArchiver = new PlanArchiver(waypoints, polygons );
+                    //TODO: Guardar Mapa
+                    if(!waypoints.isEmpty()){
+                        PlanArchiver planArchiver = new PlanArchiver(waypoints, fLines, fPolygons);
                         String texToast;
                         if ((texToast = planArchiver.savePlan(Environment.getExternalStorageDirectory().getPath()+"/FlightPlanner/"))!=null){
                             String textToast = "Se ha creado el archivo "+ texToast;
@@ -336,7 +324,6 @@ public class MapEditorFragment extends Fragment {
                         Toast toast = Toast.makeText(getActivity(), textToast, Toast.LENGTH_LONG);
                         toast.show();
                     }
-
                 } else {
                     ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, WRITE_REQUEST);
                 }
@@ -399,8 +386,6 @@ public class MapEditorFragment extends Fragment {
 
         }
 
-        optRoute = new PolylineOptions();
-
         mapEditorView.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(GoogleMap googleMap) {
@@ -413,31 +398,7 @@ public class MapEditorFragment extends Fragment {
                 if (target != null){
                     map.moveCamera(CameraUpdateFactory.newLatLngZoom(target, zoom));
                 }
-                route = map.addPolyline(optRoute);
-                if (!ptsRoute.isEmpty()){
-                    if (undo.getVisibility()==Button.INVISIBLE) {
-                        undo.setVisibility(Button.VISIBLE);
-                        setUndoButton();
-                    }
-                    int markCount = 0;
-                    for (LatLng point : ptsRoute){
-                        markCount++;
-                        Bitmap bitmap = markerGenerator.makeBitmap(getContext(), String.valueOf(markCount));
-                        Marker marker = map.addMarker(new MarkerOptions().position(point).icon(BitmapDescriptorFactory.fromBitmap(bitmap)));
-                        markers.add(marker);
-                        undoStack.push(POINT);
 
-                    }
-                }
-
-                route.setPoints(ptsRoute);
-                map.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
-                    @Override
-                    public boolean onMarkerClick(Marker marker) {
-                        editMarker(marker);
-                        return false;
-                    }
-                });
             }
         });
 
@@ -458,8 +419,11 @@ public class MapEditorFragment extends Fragment {
                         break;
                 }
 
+                //Crear variable
+
+                final FlightLine fLine = new FlightLine();
+
                 statusBar.setText("Creando Ruta");
-                optRoute = new PolylineOptions();
 
                 map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
                     @Override
@@ -467,12 +431,8 @@ public class MapEditorFragment extends Fragment {
                         ptsCount++;
                         Waypoint waypoint = new Waypoint(latLng, 0, 0.0, 'w');
                         waypoints.add(waypoint);
-                        Bitmap bitmap = markerGenerator.makeBitmap(getContext(), String.valueOf(waypoints.size()));
-                        Marker marker = map.addMarker(new MarkerOptions().position(latLng).icon(BitmapDescriptorFactory.fromBitmap(bitmap)));
-                        ptsRoute.add(latLng);
-                        markers.add(marker);
+                        fLine.addPoint(latLng, map);
                         undoStack.push(POINT);
-                        route.setPoints(ptsRoute);
                         if (undo.getVisibility()==Button.INVISIBLE) {
                             undo.setVisibility(Button.VISIBLE);
                             setUndoButton();
@@ -497,9 +457,9 @@ public class MapEditorFragment extends Fragment {
 
                 final FlightPolygon polygon = new FlightPolygon();
 
-                if  (route==null){
-                    route = map.addPolyline(optRoute = new PolylineOptions());
-                }
+//                if  (route==null){
+//                    route = map.addPolyline(optRoute = new PolylineOptions());
+//                }
 
                 map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
                     @Override
@@ -582,11 +542,11 @@ public class MapEditorFragment extends Fragment {
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
                                         buttonFlag  =  0;
-                                        flightPolygons.add(polygon);
+                                        fPolygons.add(polygon);
                                         map.setOnMapClickListener(null);
                                         statusBar.setText("");
                                         polygon.addGrid(map ,gridDistance, gridOrientation, GridPolygon.StartPosition.Home, new PointLatLngAlt(lastLocation.latitude,lastLocation.longitude));
-                                        ptsRoute.addAll(polygon.getGrid());
+                                        //ptsRoute.addAll(polygon.getGrid());
                                         finishButton.setVisibility(View.INVISIBLE);
                                         orientationInput.setVisibility(View.INVISIBLE);
                                     }
@@ -611,11 +571,8 @@ public class MapEditorFragment extends Fragment {
                 //Limpio el mapa
                 map.setOnMapClickListener(null);
                 map.clear();
-                route = map.addPolyline(optRoute);
-                ptsRoute.clear();
                 waypoints.clear();
                 ptsCount = 0;
-                markers.clear();
 
                 //desactivo cosas
                 finishButton.setVisibility(Button.INVISIBLE);
@@ -725,7 +682,7 @@ public class MapEditorFragment extends Fragment {
 
     //Funcion para cerrar editor y terminar mapa
     public void closeEditor(){
-        if (ptsRoute.isEmpty() || ptsRoute==null){
+        if (fLines.isEmpty() && fPolygons.isEmpty()){
             mListener.onMapEditorFragmentCanceled(map.getCameraPosition().target, map.getCameraPosition().zoom);
         }else{
             AlertDialog.Builder builder;
@@ -763,17 +720,13 @@ public class MapEditorFragment extends Fragment {
         undo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                int index = markers.size()-1;
                 switch ((int)undoStack.peek()){
                     case POINT:
-                        markers.get(index).remove();
-                        markers.remove(index);
-                        ptsRoute.remove(index);
-                        waypoints.remove(index);
-                        route.setPoints(ptsRoute);
+
                         break;
                     case POLYGON:
                         //TODO: agregar algoritmo cuando implemente ruta de polígono
+
                         break;
                 }
                 ptsCount--;
@@ -783,28 +736,26 @@ public class MapEditorFragment extends Fragment {
         });
     }
 
+
+    //TODO:optimizar cargador
     private boolean loadPlan(PlanArchiver planLoader){
         waypoints = new ArrayList<>(planLoader.getWaypoints());
-        route = map.addPolyline(optRoute);
         for (Waypoint waypoint: waypoints){
-            ptsRoute.add(waypoint.getPosition());
         }
-        route.setPoints(ptsRoute);
         int markCount = 0;
-        for (LatLng point : ptsRoute){
-            markCount++;
-            Bitmap bitmap = markerGenerator.makeBitmap(getContext(), String.valueOf(markCount));
-            Marker marker = map.addMarker(new MarkerOptions().position(point).icon(BitmapDescriptorFactory.fromBitmap(bitmap)));
-            markers.add(marker);
-        }
         return true;
     }
 
     //Funciones para la edicion de marcadores
     private void editMarker(final Marker marker){
         LatLng position = marker.getPosition();
-        int index = ptsRoute.indexOf(position);
-        if (index > 0){
+        int index = -1;
+        //Ubiquemos en qué linea está
+        for (FlightLine fLine: fLines){
+            if (fLine.markerBelongs(marker)) index = fLines.indexOf(fLine);
+        }
+
+        if (!(index < 0)){
             Waypoint waypoint = waypoints.get(index);
             etLatitude.setText(Double.toString(position.latitude), TextView.BufferType.EDITABLE);
             etLongitude.setText(Double.toString(position.longitude), TextView.BufferType.EDITABLE);
@@ -817,6 +768,7 @@ public class MapEditorFragment extends Fragment {
                     killMarker(marker);
                 }
             });
+            final int finalIndex = index;
             bApplyChanges.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -824,31 +776,30 @@ public class MapEditorFragment extends Fragment {
                     waypoint.setPosition(new LatLng(Double.parseDouble(String.valueOf(etLatitude.getText())), Double.parseDouble(String.valueOf(etLongitude.getText()))));
                     waypoint.setHeight(Double.parseDouble(String.valueOf(etHeight.getText())));
                     waypoint.setSpeed(Integer.parseInt(String.valueOf(etSpeed.getText())));
-                    moveMarker(marker, waypoint);
+                    fLines.get(finalIndex).movePoint(marker, waypoint.getPosition());
                 }
             });
         }
     }
 
     private void killMarker(Marker marker){
-        LatLng position = marker.getPosition();
-        markers.remove(marker);
-        marker.remove();
-        ptsRoute.remove(position);
-        route.setPoints(ptsRoute);
-        ptsCount--;
+        for ( FlightLine fline: fLines){
+            if(fline.markerBelongs(marker)){
+                fline.removePoint(marker, map);
+            }
+        }
         bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
     }
 
-    private void moveMarker(Marker marker, Waypoint waypoint){
-        int index = ptsRoute.indexOf(marker.getPosition());
-        ptsRoute.set(index, waypoint.getPosition());
-        marker.setPosition(waypoint.getPosition());
-        waypoints.set(index, waypoint);
-        route.setPoints(ptsRoute);
-        calculateDistance();
-        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
-    }
+//    private void moveMarker(Marker marker, Waypoint waypoint){
+//        int index = ptsRoute.indexOf(marker.getPosition());
+//        ptsRoute.set(index, waypoint.getPosition());
+//        marker.setPosition(waypoint.getPosition());
+//        waypoints.set(index, waypoint);
+//        route.setPoints(ptsRoute);
+//        calculateDistance();
+//        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+//    }
 
     //Funciones para calcular distancia
 
@@ -857,10 +808,10 @@ public class MapEditorFragment extends Fragment {
             String measureUnit = preferences.getString(SettingsFragment.DEFAULT_UNITS, "0" );
             switch (measureUnit){
                 case "0":
-                    distanceText.setText("Distancia: " + String.format( "%.2f", SphericalUtil.computeLength(ptsRoute) ) + "(m)");
+                    //distanceText.setText("Distancia: " + String.format( "%.2f", SphericalUtil.computeLength(ptsRoute) ) + "(m)");
                     break;
                 case "1":
-                    distanceText.setText("Distancia: " + String.format( "%.2f", SphericalUtil.computeLength(ptsRoute)/1000 ) + "(km)");
+                    //distanceText.setText("Distancia: " + String.format( "%.2f", SphericalUtil.computeLength(ptsRoute)/1000 ) + "(km)");
                     break;
                 case "2":
                     break;

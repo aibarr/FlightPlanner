@@ -86,6 +86,10 @@ public class FlightPolygon implements Parcelable{
         return this.grid.getGrid();
     }
 
+    public List<LatLng> getVertices() {
+        return vertices;
+    }
+
     private void addToMap (GoogleMap map){
         if (this.vertices.size() > 2){
             if (this.polygon != null){
@@ -115,6 +119,7 @@ public class FlightPolygon implements Parcelable{
         this.vertices.remove(point);
         if (this.vertices.size()<3) this.removeFromMap();
     }
+
 
     public void addGrid (GoogleMap map, Double distance, Double angle, GridPolygon.StartPosition startpos, PointLatLngAlt homeLocation){
         this.grid = new GridPolygon();
