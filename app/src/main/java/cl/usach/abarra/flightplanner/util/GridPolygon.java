@@ -83,7 +83,6 @@ public class GridPolygon {
     }
 
     public void calculateGridOLD(Double orientation){
-        System.out.println("Calculando Grilla");
 
         //TODO:Cambiar por setting por defecto
         Double parallelGap = 0.5;
@@ -107,7 +106,6 @@ public class GridPolygon {
         x2 = Collections.max(Xs);
         y1 = Collections.min(Ys);
         y2 = Collections.max(Ys);
-        System.out.println("La caja es:\nX1:"+ x1 +" Y1:" + y1+ "\nX2:" + x2+ " Y2:" + y2);
 
         //Ecuación de la recta
         //TODO: Calcular pendiente según orientacion
@@ -145,19 +143,14 @@ public class GridPolygon {
             List<LatLng> ptsIzq = new ArrayList<LatLng>();
             List<LatLng> ptsDer = new ArrayList<LatLng>();
             Double m = Math.atan(orientation);  //deg
-            System.out.println("M= " + m);
+
             //calcular la separación en Y
 
             Double cscOrientation = csc(orientation);
 
             Double yGap = cscOrientation * parallelGap;
-            System.out.println("GAP is:"+yGap);
 
             if (yGap < 0) yGap = yGap * (-1);
-
-
-            System.out.println("La separación es: "+ yGap);
-
 
             Double tempXder, tempYder, tempXizq, tempYizq;
 
@@ -165,11 +158,6 @@ public class GridPolygon {
             tempYizq = y2 - yGap;
             Double B = tempYizq - m * tempXizq;
             tempYder = y2;
-
-            System.out.println("B: "+B);
-            System.out.println("tyi= " + tempYizq + " y1= " + y1);
-
-            System.out.println("primera mitad");
 
             //Calcular cada recta desde una punta del cuadrilatero
             while (y1.compareTo(tempYizq)<0){
@@ -190,11 +178,9 @@ public class GridPolygon {
                 //Calculo la ecuacion nueva
                 B = B - yGap;
                 tempYizq = tempYizq - yGap;
-                System.out.println("B1: "+ B + " X1: " + tempXizq +" Y1: " + tempYizq);
 
             }
 
-            System.out.printf("Segunda Mitad");
             do {
 
                 if (tempYizq < y1) tempYizq = y1;
@@ -213,7 +199,6 @@ public class GridPolygon {
 
                 ptsDer.add(new LatLng(tempYder, tempXder));
 
-                System.out.println("B2: "+ B + " X2: " + tempXizq +" Y2: " + tempYizq);
 
                 B = B - yGap;
 
@@ -270,7 +255,6 @@ public class GridPolygon {
 
     public void calculateGridMP(Double height, Double distance, Double spacing, Double angle, float minLaneSeparation, float leadin, StartPosition startpos, PointLatLngAlt homeLocation){
         //Estoy en Mission Planner
-        System.out.println("mission Planner");
 
         if (spacing < 4 && spacing != 0)
             spacing = 4.0;
@@ -658,12 +642,11 @@ public class GridPolygon {
 
         this.grid = new ArrayList<LatLng>();
 
+
+
         for (PointLatLngAlt point : ans){
-            this.grid.add(new LatLng(point.lat, point.lng));
+            if (!(point.lat == 0.0 && point.lat == 0.0)) this.grid.add(new LatLng(point.lat, point.lng));
         }
-
-        System.out.println("Calculado");
-
     }
 
     // polar to rectangular
@@ -709,8 +692,6 @@ public class GridPolygon {
             miny = Math.min(miny, pnt.y);
             maxy = Math.max(maxy, pnt.y);
         }
-
-        System.out.println("Rectangulo listo");
 
         return new Rect(minx, maxy, maxx - minx,miny - maxy);
     }

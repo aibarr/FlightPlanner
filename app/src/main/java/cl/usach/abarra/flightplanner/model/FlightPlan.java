@@ -5,8 +5,8 @@ import android.os.Parcelable;
 
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.maps.android.SphericalUtil;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,6 +29,8 @@ public class FlightPlan implements Parcelable {
     public static final Character LINE = 'l';
 
     private int pointer;
+
+    //region CONSTRUCTOR
 
     //Constructor de plan de vuelo
     public FlightPlan(){
@@ -67,10 +69,9 @@ public class FlightPlan implements Parcelable {
         }
     };
 
-    public Waypoint nextPoint() {
-        this.pointer++;
-        return this.route.get(pointer);
-    }
+    //endregion
+
+    //region SETTER_GETTER
 
     public void setHome(Waypoint home) {
         this.home = home;
@@ -96,6 +97,17 @@ public class FlightPlan implements Parcelable {
         this.fLines = fLines;
     }
 
+    public void setOrder(List<Character> order) {
+        this.order = order;
+    }
+
+    //endregion
+
+    public Waypoint nextPoint() {
+        this.pointer++;
+        return this.route.get(pointer);
+    }
+
     public void addPolygon(FlightPolygon fPoly){
         this.fPolygons.add(fPoly);
         this.order.add(POLYGON);
@@ -110,9 +122,28 @@ public class FlightPlan implements Parcelable {
         return fPolygons;
     }
 
+    //TODO:recrear mapa
     public void reCreateMap(GoogleMap map){
 
 
+    }
+
+    public Double calculateDistance(){
+        List<LatLng> calcRoute = new ArrayList<LatLng>();
+
+        Double distance = 0.0d;
+
+        if(this.route != null){
+            for(Waypoint wp : this.route){
+                calcRoute.add(wp.getPosition());
+            }
+            distance = SphericalUtil.computeLength(calcRoute);
+
+            return distance;
+
+        }else{
+            return distance;
+        }
     }
 
     @Override

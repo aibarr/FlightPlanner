@@ -143,8 +143,11 @@ public class FlightPolygon implements Parcelable{
         }
         auxL.removeAll(removal);
 
+
+
         //añado la grilla
         innerRoute = map.addPolyline(lineOptions.addAll(auxL));
+
     }
 
     public int size(){

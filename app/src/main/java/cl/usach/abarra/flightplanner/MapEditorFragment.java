@@ -203,6 +203,9 @@ public class MapEditorFragment extends Fragment {
         fPlan = new FlightPlan();
         fPolygons = new ArrayList<FlightPolygon>();
         fLines = new ArrayList<FlightLine>();
+        order = new ArrayList<Character>();
+
+        waypoints = new ArrayList<Waypoint>();
 
         //iniciemos el marcador de Home
         homeMarkerOpt = new MarkerOptions().draggable(false).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
@@ -243,6 +246,9 @@ public class MapEditorFragment extends Fragment {
             zoom = saved.getFloat("zoom");
 
             waypoints = saved.getParcelableArrayList("waypoints");
+            if(waypoints==null){
+                waypoints = new ArrayList<Waypoint>();
+            }
 
         }
 
@@ -388,7 +394,7 @@ public class MapEditorFragment extends Fragment {
         });
 
 
-
+        //region line
         //Flag para Linea "1"
         createLine = (Button) rootView.findViewById(R.id.create_line);
         createLine.setOnClickListener(new View.OnClickListener() {
@@ -416,6 +422,8 @@ public class MapEditorFragment extends Fragment {
                         ptsCount++;
                         Waypoint waypoint = new Waypoint(latLng, 0, 0.0, Waypoint.WAYPOINT);
                         waypoints.add(waypoint);
+                        fPlan.setRoute(waypoints);
+                        calculateDistance();
                         fLine.addPoint(latLng, map);
                         undoStack.push(POINT);
                         if (undo.getVisibility()==Button.INVISIBLE) {
@@ -431,6 +439,9 @@ public class MapEditorFragment extends Fragment {
             }
         });
 
+        //endregion
+
+        //region Polygon
         //Flag para Poligono "2"
         final Button finishButton = (Button) rootView.findViewById(R.id.finish_Button);
         final EditText orientationInput = (EditText) rootView.findViewById(R.id.orienation_input);
@@ -453,6 +464,8 @@ public class MapEditorFragment extends Fragment {
                         polygon.addPoint(latLng, map);
                     }
                 });
+
+                undoStack.add(POLYGON_POINT);
 
                 orientationInput.addTextChangedListener(new TextWatcher() {
                     @Override
@@ -495,7 +508,7 @@ public class MapEditorFragment extends Fragment {
                         switch (polygon.size()){
                             case 0:
                                 map.setOnMapClickListener(null);
-                                //TODO:Remove polygon from map
+
                                 statusBar.setText("");
                                 finishButton.setVisibility(View.INVISIBLE);
                                 orientationInput.setVisibility(View.INVISIBLE);
@@ -526,7 +539,12 @@ public class MapEditorFragment extends Fragment {
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
                                         buttonFlag  =  0;
-                                        fPolygons.add(polygon);
+                                        if(fPolygons != null){
+                                            fPolygons.add(polygon);
+                                        } else {
+                                            fPolygons = new ArrayList<>();
+                                            fPolygons.add(polygon);
+                                        }
                                         order.add(FlightPlan.POLYGON);
                                         map.setOnMapClickListener(null);
                                         statusBar.setText("");
@@ -535,6 +553,8 @@ public class MapEditorFragment extends Fragment {
                                         for (LatLng point: auxP){
                                             waypoints.add(new Waypoint(point, 0,0, Waypoint.WAYPOINT));
                                         }
+                                        fPlan.setRoute(waypoints);
+                                        calculateDistance();
                                         finishButton.setVisibility(View.INVISIBLE);
                                         orientationInput.setVisibility(View.INVISIBLE);
                                     }
@@ -552,6 +572,10 @@ public class MapEditorFragment extends Fragment {
             }
         });
 
+        //endregion
+
+        //region clear
+
         Button clear = (Button) rootView.findViewById(R.id.clear_button);
         clear.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -559,7 +583,11 @@ public class MapEditorFragment extends Fragment {
                 //Limpio el mapa
                 map.setOnMapClickListener(null);
                 map.clear();
-                waypoints.clear();
+                if(waypoints != null) waypoints.clear();
+                if(order != null) order.clear();
+                if(fLines != null) fLines.clear();
+                if(fPolygons != null) fPolygons.clear();
+
                 ptsCount = 0;
 
                 //desactivo cosas
@@ -570,8 +598,11 @@ public class MapEditorFragment extends Fragment {
             }
         });
 
+        //endregion
+
         undo = (Button) rootView.findViewById(R.id.undo_button);
 
+        //region HOME
         homeButton = (Button) rootView.findViewById(R.id.set_home);
         homeButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -594,9 +625,13 @@ public class MapEditorFragment extends Fragment {
                 }
             }
         });
+        //endregion
+
         // Inflate the layout for this fragment
         return rootView;
     }
+
+
 
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
@@ -616,6 +651,8 @@ public class MapEditorFragment extends Fragment {
             mListener.onMapEditorFragmentInteraction(uri);
         }
     }*/
+
+    //region memAdmin
 
     @Override
     public void onAttach(Context context) {
@@ -639,6 +676,7 @@ public class MapEditorFragment extends Fragment {
         outState.putParcelableArrayList("waypoints", (ArrayList<? extends Parcelable>) waypoints);
         outState.putParcelableArrayList("lines", (ArrayList<? extends Parcelable>) fLines);
         outState.putParcelableArrayList("polygons", (ArrayList<? extends Parcelable>) fPolygons);
+        outState.putParcelable("plan", fPlan);
 
         mapEditorView.onSaveInstanceState(outState);
         super.onSaveInstanceState(outState);
@@ -674,6 +712,8 @@ public class MapEditorFragment extends Fragment {
         mapEditorView.onDestroy();
     }
 
+    //endregion
+
     //Funcion para cerrar editor y terminar mapa
     public void closeEditor(){
         if (fLines.isEmpty() && fPolygons.isEmpty()){
@@ -696,6 +736,14 @@ public class MapEditorFragment extends Fragment {
 
                             if(fPolygons != null){
                                 fPlan.setfPolygons(fPolygons);
+                            }
+
+                            if (waypoints != null){
+                                fPlan.setRoute(waypoints);
+                            }
+
+                            if(order != null){
+                                fPlan.setOrder(order);
                             }
 
                             mListener.onMapEditorFragmentFinishResult(fPlan, map.getCameraPosition().target, map.getCameraPosition().zoom);
@@ -810,10 +858,10 @@ public class MapEditorFragment extends Fragment {
             String measureUnit = preferences.getString(SettingsFragment.DEFAULT_UNITS, "0" );
             switch (measureUnit){
                 case "0":
-                    //distanceText.setText("Distancia: " + String.format( "%.2f", SphericalUtil.computeLength(ptsRoute) ) + "(m)");
+                    distanceText.setText("Distancia: " + String.format( "%.2f", fPlan.calculateDistance() ) + "(m)");
                     break;
                 case "1":
-                    //distanceText.setText("Distancia: " + String.format( "%.2f", SphericalUtil.computeLength(ptsRoute)/1000 ) + "(km)");
+                    distanceText.setText("Distancia: " + String.format( "%.2f", fPlan.calculateDistance()/1000 ) + "(km)");
                     break;
                 case "2":
                     break;

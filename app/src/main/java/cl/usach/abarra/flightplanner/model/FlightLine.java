@@ -1,5 +1,6 @@
 package cl.usach.abarra.flightplanner.model;
 
+import android.graphics.Color;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -26,9 +27,10 @@ public class FlightLine implements Parcelable{
 
     public FlightLine(){
         pointCounter = 0;
-        this.markers = new ArrayList<>();
+        this.markers = new ArrayList<Marker>();
+        this.vertices = new ArrayList<LatLng>();
         mOptions = new MarkerOptions();
-        polylineOptions = new PolylineOptions();
+        polylineOptions = new PolylineOptions().color(Color.BLUE).width(7);
 
     }
 
@@ -37,9 +39,9 @@ public class FlightLine implements Parcelable{
         this.vertices = new ArrayList<>(points);
         this.markers = new ArrayList<>();
 
-        //TODO: darle opciones a lineas y marcadores
+        //TODO: darle opciones a marcadores
         mOptions = new MarkerOptions();
-        polylineOptions = new PolylineOptions();
+        polylineOptions = new PolylineOptions().color(Color.BLUE).width(7);
 
         //añado marcadores para cada punto
         for (LatLng point : points)
