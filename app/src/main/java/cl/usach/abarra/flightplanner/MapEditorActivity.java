@@ -11,6 +11,7 @@ import com.google.android.gms.maps.model.Polygon;
 import java.util.ArrayList;
 import java.util.List;
 
+import cl.usach.abarra.flightplanner.model.FlightPlan;
 import cl.usach.abarra.flightplanner.model.Waypoint;
 
 public class MapEditorActivity extends AppCompatActivity implements MapEditorFragment.OnMapEditorFragmentListener{
@@ -37,9 +38,9 @@ public class MapEditorActivity extends AppCompatActivity implements MapEditorFra
         intentData = getIntent().getExtras();
         LatLng target = (LatLng) intentData.get("target");
         float zoom = intentData.getFloat("zoom");
-        List<Waypoint> waypoints = intentData.getParcelableArrayList("waypoints");
-        if (waypoints!=null){
-            mapEditorFragment = MapEditorFragment.newInstance(target, zoom, waypoints);
+        FlightPlan fPlan = (FlightPlan) intentData.get("plan");
+        if (fPlan!=null){
+            mapEditorFragment = MapEditorFragment.newInstance(target, zoom, fPlan);
         } else {
             mapEditorFragment = MapEditorFragment.newInstance(target, zoom);
         }
@@ -70,16 +71,11 @@ public class MapEditorActivity extends AppCompatActivity implements MapEditorFra
     }
 
     @Override
-    public void onMapEditorFragmentFinishResult(List<Waypoint> waypoints, List<Polygon> polygonList, LatLng target, Float zoom) {
+    public void onMapEditorFragmentFinishResult(FlightPlan fPlan, LatLng target, Float zoom) {
         System.out.println("Finish recibido");
-        List<String>    polygons = new ArrayList<String>();
-        for (Polygon polygon : polygonList){
-            polygons.add(polygon.getPoints().toString());
-        }
 
         Intent returnIntent = new Intent();
-        returnIntent.putParcelableArrayListExtra("waypoints", (ArrayList<? extends Parcelable>) waypoints);
-        returnIntent.putStringArrayListExtra("polygons", (ArrayList<String>) polygons);
+        returnIntent.putExtra("plan", fPlan);
         returnIntent.putExtra("target", target);
         returnIntent.putExtra("zoom", zoom);
         setResult(AppCompatActivity.RESULT_OK, returnIntent);

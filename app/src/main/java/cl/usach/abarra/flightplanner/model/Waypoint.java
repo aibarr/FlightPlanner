@@ -16,6 +16,9 @@ public class Waypoint implements Parcelable {
     private double height;
     private char type;
 
+    public static final char HOME = 'h';
+    public static final char WAYPOINT = 'w';
+
     public static double rad2deg = (180 / Math.PI);
     public static double deg2rad = (1.0 / rad2deg);
 
@@ -28,10 +31,6 @@ public class Waypoint implements Parcelable {
         this.height = height;
         this.type = type;
     }
-
-//    public Waypoint fromUTM(int zone, Double longitude, Double latitud){
-//
-//    }
 
     public LatLng getPosition() {
         return position;
@@ -94,6 +93,5 @@ public class Waypoint implements Parcelable {
         dest.writeInt(speed);
         dest.writeDouble(height);
     }
-
 
 }

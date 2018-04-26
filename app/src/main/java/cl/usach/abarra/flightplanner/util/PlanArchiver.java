@@ -63,7 +63,7 @@ public class PlanArchiver {
             System.out.println("Archivo no existe o no fue encontrado");
             return false;
         }else {
-            try {
+            try {//TODO: TERMINAR LECTURA PLAN
                 FileReader fileReader = new FileReader(file);
                 BufferedReader bufferedReader = new BufferedReader(fileReader);
                 String line;

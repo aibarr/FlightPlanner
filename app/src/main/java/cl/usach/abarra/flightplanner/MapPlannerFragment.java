@@ -40,6 +40,7 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import java.util.ArrayList;
 import java.util.List;
 
+import cl.usach.abarra.flightplanner.model.FlightPlan;
 import cl.usach.abarra.flightplanner.model.FlightPolygon;
 import cl.usach.abarra.flightplanner.model.Waypoint;
 import cl.usach.abarra.flightplanner.util.MarkerGenerator;
@@ -57,9 +58,9 @@ public class MapPlannerFragment extends Fragment {
 
     //Datos a mostrar
     private List<LatLng> ptsRoute;
-    private List<FlightPolygon> polygonList;
-
     private List<Waypoint> waypoints;
+
+    private FlightPlan fPlan;
 
     private MarkerGenerator markerGenerator;
     private int permissionCheck;
@@ -341,13 +342,19 @@ public class MapPlannerFragment extends Fragment {
             int markCount = 0;
             switch (requestCode){
                 case NEW_PLAN:
-                    
-                    waypoints = bundle.getParcelableArrayList("waypoints");                    
+                    fPlan = (FlightPlan) bundle.get("plan");
+                    if (fPlan != null){
+                        waypoints = fPlan.getRoute();
+                    }
                     target = (LatLng) bundle.get("target");
                     zoom = bundle.getFloat("zoom");
                     googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(target,zoom));
                     optRuta = new PolylineOptions();
                     ptsRoute = new ArrayList<LatLng>();
+
+                    for (FlightPolygon fPoly : fPlan.getfPolygons()){
+                        fPoly.addPerimeter(googleMap);
+                    }
                     
                     for (Waypoint waypoint: waypoints){
                         markCount++;                        

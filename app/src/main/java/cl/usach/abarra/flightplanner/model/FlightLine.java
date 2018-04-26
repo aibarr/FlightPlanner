@@ -20,6 +20,8 @@ public class FlightLine implements Parcelable{
     private PolylineOptions polylineOptions;
     private MarkerOptions mOptions;
 
+
+
     private int pointCounter;
 
     public FlightLine(){

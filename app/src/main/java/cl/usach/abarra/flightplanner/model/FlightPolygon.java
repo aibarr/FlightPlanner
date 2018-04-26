@@ -90,6 +90,8 @@ public class FlightPolygon implements Parcelable{
         return vertices;
     }
 
+
+
     private void addToMap (GoogleMap map){
         if (this.vertices.size() > 2){
             if (this.polygon != null){
@@ -118,6 +120,10 @@ public class FlightPolygon implements Parcelable{
         this.mVertices.remove(ptnIndex);
         this.vertices.remove(point);
         if (this.vertices.size()<3) this.removeFromMap();
+    }
+
+    public void addPerimeter(GoogleMap map) {
+        polygon = map.addPolygon(this.options.addAll(this.vertices));
     }
 
 

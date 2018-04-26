@@ -70,6 +70,7 @@ import java.util.Stack;
 
 
 import cl.usach.abarra.flightplanner.model.FlightLine;
+import cl.usach.abarra.flightplanner.model.FlightPlan;
 import cl.usach.abarra.flightplanner.model.FlightPolygon;
 import cl.usach.abarra.flightplanner.util.GridPolygon;
 import cl.usach.abarra.flightplanner.util.MarkerGenerator;
@@ -94,20 +95,18 @@ public class MapEditorFragment extends Fragment {
     private MapView mapEditorView;
     private GoogleMap map;
 
-    List<FlightLine> fLines;
+    private FlightPlan fPlan;
+    private List<Waypoint> waypoints;
+    private List<FlightLine> fLines;
     private List<FlightPolygon> fPolygons;
+    private List<Character> order;
 
     private Marker homeMarker;
     private MarkerOptions homeMarkerOpt;
     private int ptsCount;
-    private Float[] heights;
-    private Float[] speeds;
 
-    private List<Waypoint> waypoints;
 
     private Stack  undoStack;
-
-    private MarkerGenerator markerGenerator;
 
     private static final int POINT = 0;
     private static final int POLYGON_POINT = 1;
@@ -123,16 +122,12 @@ public class MapEditorFragment extends Fragment {
 
     private static final LatLng OFICINA = new LatLng(-33.4258741,-70.6185903);
 
+    //Key para la elevacion
     private static final String API_KEY = "AIzaSyBITRYAdWiqqRk_lj_JeVFDDKG2degBZyE";
 
     private LatLng lastLocation;
 
     //Lista de polígonos creados durante la creación del plan de vuelo
-    private List<Polygon> polygonList;
-    private ArrayList<ArrayList<LatLng>> polygons;
-
-    //TODO: revisar utilidad de esta variable como global
-    private PolygonOptions polygonOptions;
 
     //Listas para paso entre activities
     private Bundle bundle;
@@ -147,6 +142,7 @@ public class MapEditorFragment extends Fragment {
     private Button createPolygon;
     private Button undo;
     private Button  homeButton;
+
 
     //Textos del fragment
     TextView statusBar;
@@ -183,10 +179,10 @@ public class MapEditorFragment extends Fragment {
         return fragment;
     }
 
-    public static MapEditorFragment newInstance(LatLng camPos, float camZoom, List<Waypoint> waypoints){
+    public static MapEditorFragment newInstance(LatLng camPos, float camZoom, FlightPlan fPlan){
         MapEditorFragment fragment = new MapEditorFragment();
         Bundle args = new Bundle();
-        args.putParcelableArrayList("waypoints", (ArrayList<? extends Parcelable>) waypoints);
+        args.putParcelable("plan", fPlan);
         args.putParcelable("target", camPos);
         args.putFloat("zoom", camZoom);
         fragment.setArguments(args);
@@ -201,13 +197,12 @@ public class MapEditorFragment extends Fragment {
         //obtengamos las preferencias
         preferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
 
-
         gridOrientation = Double.valueOf(preferences.getString(SettingsFragment.DEFAULT_ANGLE, "45.0"));
         gridDistance = Double.valueOf(preferences.getString(SettingsFragment.DEFAULT_DISTANCE, "10.0"));
         undoStack = new Stack();
+        fPlan = new FlightPlan();
         fPolygons = new ArrayList<FlightPolygon>();
         fLines = new ArrayList<FlightLine>();
-
 
         //iniciemos el marcador de Home
         homeMarkerOpt = new MarkerOptions().draggable(false).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
@@ -225,25 +220,21 @@ public class MapEditorFragment extends Fragment {
         bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
         bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
 
-        polygonOptions = new PolygonOptions();
-        polygonList = new ArrayList<Polygon>();
-
         ptsCount = 0;
 
         if (getArguments() != null) {
             bundle = getArguments();
             target = (LatLng)bundle.get("target");
             zoom = bundle.getFloat("zoom");
-            waypoints = bundle.getParcelableArrayList("waypoints");
-            if (waypoints!= null){
-                for (Waypoint waypoint : waypoints){
-                    //ptsRoute.add(waypoint.getPosition());
-                    ptsCount++;
-                }
-            }else{
-                waypoints = new ArrayList<Waypoint>();
+            FlightPlan auxFplan =(FlightPlan) bundle.get("plan");
+            if(auxFplan != null){
+                fPlan = auxFplan;
+                waypoints = fPlan.getRoute();
+                //TODO: añadir objetos a mapa
             }
         }
+
+        //TODO: saved instance
 
         if (savedInstanceState != null){
             saved = savedInstanceState;
@@ -252,13 +243,7 @@ public class MapEditorFragment extends Fragment {
             zoom = saved.getFloat("zoom");
 
             waypoints = saved.getParcelableArrayList("waypoints");
-            if (waypoints != null){
-                for (Waypoint waypoint: waypoints){
-                    //ptsRoute.add(waypoint.getPosition());
-                }
-            }else{
-                waypoints = new ArrayList<Waypoint>();
-            }
+
         }
 
         setHasOptionsMenu(true);
@@ -429,7 +414,7 @@ public class MapEditorFragment extends Fragment {
                     @Override
                     public void onMapClick(LatLng latLng) {
                         ptsCount++;
-                        Waypoint waypoint = new Waypoint(latLng, 0, 0.0, 'w');
+                        Waypoint waypoint = new Waypoint(latLng, 0, 0.0, Waypoint.WAYPOINT);
                         waypoints.add(waypoint);
                         fLine.addPoint(latLng, map);
                         undoStack.push(POINT);
@@ -441,25 +426,26 @@ public class MapEditorFragment extends Fragment {
                         getElevation(waypoint);
                     }
                 });
+                fLines.add(fLine);
+                order.add(FlightPlan.LINE);
             }
         });
 
         //Flag para Poligono "2"
         final Button finishButton = (Button) rootView.findViewById(R.id.finish_Button);
         final EditText orientationInput = (EditText) rootView.findViewById(R.id.orienation_input);
-        orientationInput.setText("45");
+        orientationInput.setText(gridOrientation.toString());
         createPolygon = (Button) rootView.findViewById(R.id.create_polygon);
         createPolygon.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+
                 //Seteamos Flag para avisar que estoy creando un polígono
                 buttonFlag = 2;
 
                 final FlightPolygon polygon = new FlightPolygon();
-
-//                if  (route==null){
-//                    route = map.addPolyline(optRoute = new PolylineOptions());
-//                }
+                orientationInput.setVisibility(EditText.VISIBLE);
+                orientationInput.setBackgroundColor(Color.WHITE);
 
                 map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
                     @Override
@@ -467,8 +453,6 @@ public class MapEditorFragment extends Fragment {
                         polygon.addPoint(latLng, map);
                     }
                 });
-                orientationInput.setVisibility(EditText.VISIBLE);
-                orientationInput.setBackgroundColor(Color.WHITE);
 
                 orientationInput.addTextChangedListener(new TextWatcher() {
                     @Override
@@ -543,10 +527,14 @@ public class MapEditorFragment extends Fragment {
                                     public void onClick(DialogInterface dialog, int which) {
                                         buttonFlag  =  0;
                                         fPolygons.add(polygon);
+                                        order.add(FlightPlan.POLYGON);
                                         map.setOnMapClickListener(null);
                                         statusBar.setText("");
                                         polygon.addGrid(map ,gridDistance, gridOrientation, GridPolygon.StartPosition.Home, new PointLatLngAlt(lastLocation.latitude,lastLocation.longitude));
-                                        //ptsRoute.addAll(polygon.getGrid());
+                                        List<LatLng> auxP = new ArrayList<>(polygon.getGrid());
+                                        for (LatLng point: auxP){
+                                            waypoints.add(new Waypoint(point, 0,0, Waypoint.WAYPOINT));
+                                        }
                                         finishButton.setVisibility(View.INVISIBLE);
                                         orientationInput.setVisibility(View.INVISIBLE);
                                     }
@@ -590,6 +578,7 @@ public class MapEditorFragment extends Fragment {
             public void onClick(View v) {
                 if (map != null){
                     if (lastLocation==null){
+                        //TODO:indicar que no tengo una ultima posición
                         lastLocation = OFICINA;
                     }
                     System.out.println("Last Location is" + lastLocation.toString());
@@ -597,6 +586,9 @@ public class MapEditorFragment extends Fragment {
                         homeMarker.setPosition(lastLocation);
                     }else{
                         homeMarker = map.addMarker(homeMarkerOpt.position(lastLocation));
+                    }
+                    if (fPlan != null){
+                        fPlan.setHome(new LatLng(lastLocation.latitude, lastLocation.longitude), 0, 0);
                     }
                     map.animateCamera(CameraUpdateFactory.newLatLngZoom(lastLocation, 17));
                 }
@@ -645,6 +637,8 @@ public class MapEditorFragment extends Fragment {
         outState.putFloat("zoom", zoom);
 
         outState.putParcelableArrayList("waypoints", (ArrayList<? extends Parcelable>) waypoints);
+        outState.putParcelableArrayList("lines", (ArrayList<? extends Parcelable>) fLines);
+        outState.putParcelableArrayList("polygons", (ArrayList<? extends Parcelable>) fPolygons);
 
         mapEditorView.onSaveInstanceState(outState);
         super.onSaveInstanceState(outState);
@@ -696,7 +690,15 @@ public class MapEditorFragment extends Fragment {
                     .setPositiveButton("Guardar y cerrar", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            mListener.onMapEditorFragmentFinishResult(waypoints, polygonList, map.getCameraPosition().target, map.getCameraPosition().zoom);
+                            if(fLines != null){
+                                fPlan.setfLines(fLines);
+                            }
+
+                            if(fPolygons != null){
+                                fPlan.setfPolygons(fPolygons);
+                            }
+
+                            mListener.onMapEditorFragmentFinishResult(fPlan, map.getCameraPosition().target, map.getCameraPosition().zoom);
                         }
                     })
                     .setNegativeButton("Cerrar sin guardar", new DialogInterface.OnClickListener() {
@@ -878,7 +880,7 @@ public class MapEditorFragment extends Fragment {
 
         void onMapEditorFragmentCanceled(LatLng camPos, float camZoom);
 
-        void onMapEditorFragmentFinishResult(List<Waypoint> waypoints, List<Polygon> polygonList, LatLng camPos, Float camZoom);
+        void onMapEditorFragmentFinishResult(FlightPlan fPlan, LatLng camPos, Float camZoom);
     }
 
 
